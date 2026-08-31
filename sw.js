@@ -2,7 +2,7 @@
  * - la coquille (html/css/js) : cache d'abord, réseau si absent
  * - TMDB (données + images) : on sert le cache et on rafraîchit en arrière-plan
  */
-const VERSION = "season-v5";
+const VERSION = "season-v6";
 const SHELL = VERSION + "-shell";
 const RUNTIME = VERSION + "-runtime";
 
@@ -21,7 +21,18 @@ const SHELL_FILES = [
 
 self.addEventListener("install", (e) => {
   e.waitUntil(
-    caches.open(SHELL).then((c) => c.addAll(SHELL_FILES)).then(() => self.skipWaiting())
+    caches.open(SHELL).then((c) =>
+      // `cache: "reload"` : on ignore le cache HTTP du navigateur pendant
+      // l'install, sinon une nouvelle version du SW pourrait ré-enregistrer
+      // les anciens fichiers encore en cache navigateur (max-age GitHub Pages).
+      Promise.all(
+        SHELL_FILES.map((url) =>
+          fetch(url, { cache: "reload" }).then((r) => {
+            if (r.ok) return c.put(url, r);
+          })
+        )
+      )
+    ).then(() => self.skipWaiting())
   );
 });
 
