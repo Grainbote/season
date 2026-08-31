@@ -64,6 +64,20 @@ Le dépôt public ne contient que la coquille de l'appli.
   *Tout cocher / décocher la saison*.
 - **Retirer de mes listes** (destructif, confirmation) — efface la série et ses épisodes.
 
+### Onglet À venir
+- Prochaines sorties d'épisodes des séries suivies, groupées par date (relatif
+  jusqu'à 7 j, sinon jour + date). Tap → fiche.
+- **Scan à la demande** (`scanUpcoming`, bouton « ↻ Actualiser ») : le 1ᵉʳ scan
+  passe en revue **toutes** les séries (`/tv/{id}` → `status` + `next_episode_to_air`,
+  puis `/season/{n}` pour la liste complète des épisodes à venir de cette saison),
+  pool de 12, barre de progression. ~400 séries la 1ʳᵉ fois.
+- Ensuite : les séries `Ended`/`Canceled` (champ `show.tmdbStatus`) sont **exclues**
+  des scans suivants ; rafraîchissement auto en arrière-plan à l'ouverture de
+  l'onglet si le dernier scan date de > 6 h (ne re-vérifie que les séries encore
+  en production, ~30-40 appels).
+- Stocké sur `show` : `tmdbStatus`, `upcoming: [{season,episode,name,airDate}]`,
+  `nextScanAt`.
+
 ### Onglet Stats
 - Cartes : temps de visionnage total, épisodes vus, films vus, séries finies · en cours.
 - **Genres favoris** (barres) — exclut les titres encore « à voir ».

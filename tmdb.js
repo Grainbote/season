@@ -76,6 +76,19 @@ window.TMDB = (() => {
       };
     },
 
+    // état de diffusion + prochain épisode annoncé (pour l'onglet « À venir »)
+    async tvSchedule(id) {
+      const d = await call(`/tv/${id}`);
+      const ne = d.next_episode_to_air;
+      return {
+        status: d.status || "", // "Returning Series", "Ended", "Canceled", "In Production"…
+        nextSeason: ne ? ne.season_number : null,
+        nextEp: ne
+          ? { season: ne.season_number, episode: ne.episode_number, name: ne.name, airDate: ne.air_date || "" }
+          : null,
+      };
+    },
+
     async season(tvId, number) {
       const d = await call(`/tv/${tvId}/season/${number}`);
       return (d.episodes || []).map((e) => ({

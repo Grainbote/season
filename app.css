@@ -266,6 +266,32 @@ img { max-width: 100%; }
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .result-meta .tag { font-size: 11px; color: var(--accent); font-weight: 700; text-transform: uppercase; }
 
+/* ---- À venir ---- */
+.avenir-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.avenir-when { font-size: 11.5px; color: var(--text-dim); }
+.avenir-day {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 18px 0 6px;
+  text-transform: capitalize;
+}
+.avenir-day:first-of-type { margin-top: 6px; }
+.scan-progress {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+}
+
 /* ---- Fiche ---- */
 .detail-hero {
   display: flex;

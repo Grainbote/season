@@ -75,6 +75,7 @@
     if (!b) return;
     const tab = b.dataset.tab;
     if (tab === "listes") resetTo(renderListes, "Listes", "listes");
+    if (tab === "avenir") resetTo(renderAVenir, "À venir", "avenir");
     if (tab === "recherche") resetTo(renderRecherche, "Recherche", "recherche");
     if (tab === "stats") resetTo(renderStats, "Stats", "stats");
   });
@@ -744,6 +745,172 @@
     wrap.append(exp, imp, file);
 
     render(wrap);
+  }
+
+  // ---- À VENIR -----------------------------------------------------
+  let scanning = false;
+  let scanProgress = null;
+
+  function cap(s) { return s ? s[0].toUpperCase() + s.slice(1) : s; }
+  function todayISO() { return new Date().toISOString().slice(0, 10); }
+
+  function fmtRelDate(iso) {
+    const d = new Date(iso + "T00:00:00");
+    const t = new Date(); t.setHours(0, 0, 0, 0);
+    const days = Math.round((d - t) / 86400000);
+    if (days <= 0) return "aujourd'hui";
+    if (days === 1) return "demain";
+    if (days < 7) return `dans ${days} jours`;
+    return d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+  }
+  function fmtAgo(ts) {
+    const min = Math.round((Date.now() - ts) / 60000);
+    if (min < 2) return "à l'instant";
+    if (min < 60) return `il y a ${min} min`;
+    const h = Math.round(min / 60);
+    if (h < 24) return `il y a ${h} h`;
+    return `il y a ${Math.round(h / 24)} j`;
+  }
+
+  async function poolRun(items, size, fn) {
+    let i = 0;
+    await Promise.all(
+      Array.from({ length: Math.min(size, items.length) }, async () => {
+        while (i < items.length) { const idx = i++; await fn(items[idx], idx); }
+      })
+    );
+  }
+
+  async function renderAVenir() {
+    render(spinner());
+    const shows = await DB.allShows();
+    const tv = shows.filter((s) => s.type === "tv");
+    const scannedAt = Math.max(0, ...tv.map((s) => s.nextScanAt || 0));
+    const known = scannedAt > 0;
+
+    const today = todayISO();
+    const items = [];
+    for (const s of tv) {
+      for (const e of s.upcoming || []) {
+        if (e.airDate && e.airDate >= today) items.push({ show: s, ep: e });
+      }
+    }
+    items.sort((a, b) => a.ep.airDate.localeCompare(b.ep.airDate) || a.show.title.localeCompare(b.show.title));
+
+    const wrap = el("<div></div>");
+
+    const bar = el('<div class="avenir-bar"></div>');
+    const btn = el('<button class="link-btn">↻ Actualiser</button>');
+    btn.addEventListener("click", () => scanUpcoming(true));
+    bar.append(btn);
+    if (known) bar.append(el(`<span class="avenir-when">Vérifié ${fmtAgo(scannedAt)}</span>`));
+    wrap.append(bar);
+
+    scanProgress = el('<div class="scan-progress" hidden></div>');
+    wrap.append(scanProgress);
+    if (scanning) showScan();
+
+    if (!items.length) {
+      wrap.append(el(
+        `<div class="empty"><span class="big">◷</span>${
+          !navigator.onLine && !known
+            ? "Pas de réseau.<br>Reviens connectée pour voir les prochaines sorties."
+            : known
+              ? "Aucune sortie d'épisode annoncée<br>pour tes séries."
+              : "Touche « Actualiser » pour chercher les prochaines<br>sorties de tes séries. La première vérification<br>passe en revue toute ta liste, ça prend un moment."
+        }</div>`
+      ));
+    } else {
+      let curDate = null;
+      for (const it of items) {
+        if (it.ep.airDate !== curDate) {
+          curDate = it.ep.airDate;
+          wrap.append(el(`<div class="avenir-day">${esc(cap(fmtRelDate(curDate)))}</div>`));
+        }
+        wrap.append(avenirRow(it));
+      }
+    }
+    render(wrap);
+
+    // rafraîchissement auto seulement si un premier scan a déjà été fait
+    // (le tout premier scan, ~230 séries, reste déclenché à la main)
+    if (navigator.onLine && !scanning && known && Date.now() - scannedAt > 6 * 3600 * 1000) {
+      scanUpcoming(false);
+    }
+  }
+
+  function avenirRow({ show, ep }) {
+    const thumb = show.poster
+      ? `<img class="thumb" loading="lazy" src="${TMDB.poster(show.poster, "w185")}" alt="">`
+      : `<div class="thumb-fallback">📺</div>`;
+    const row = el(
+      `<div class="result-row">
+        ${thumb}
+        <div class="result-meta">
+          <span class="tag">S${ep.season} E${String(ep.episode).padStart(2, "0")}</span>
+          <h3>${esc(show.title)}</h3>
+          <p>${esc(ep.name || "Épisode " + ep.episode)}</p>
+        </div>
+      </div>`
+    );
+    row.addEventListener("click", () => go(() => renderDetail(show.key), show.title));
+    return row;
+  }
+
+  function showScan(done, total) {
+    if (!scanProgress) return;
+    scanProgress.hidden = false;
+    scanProgress.textContent =
+      total ? `Vérification des séries… ${done}/${total}` : "Vérification des séries…";
+  }
+
+  async function scanUpcoming(manual) {
+    if (scanning || !navigator.onLine || !TMDB.hasKey()) {
+      if (manual && !navigator.onLine) toast("Pas de réseau");
+      return;
+    }
+    const shows = await DB.allShows();
+    const ended = new Set(["Ended", "Canceled"]);
+    const targets = shows.filter((s) => {
+      if (s.type !== "tv" || !s.tmdbId) return false;
+      // manuel : on vérifie toutes les séries jamais scannées + celles encore
+      // en production. Auto : seulement celles qui peuvent encore sortir.
+      if (ended.has(s.tmdbStatus)) return false; // série finie : inutile de revérifier
+      if (!s.nextScanAt) return manual; // 1er scan = seulement sur demande (≈400 séries)
+      return Date.now() - s.nextScanAt > 12 * 3600 * 1000;
+    });
+    if (!targets.length) {
+      if (manual) toast("Déjà à jour");
+      return;
+    }
+
+    scanning = true;
+    let done = 0;
+    showScan(0, targets.length);
+    await poolRun(targets, 12, async (s) => {
+      try {
+        const sched = await TMDB.tvSchedule(s.tmdbId);
+        s.tmdbStatus = sched.status;
+        if (sched.nextEp && sched.nextSeason != null) {
+          let eps = [];
+          try { eps = await TMDB.season(s.tmdbId, sched.nextSeason); } catch { eps = [sched.nextEp]; }
+          const today = todayISO();
+          s.upcoming = eps
+            .filter((e) => e.airDate && e.airDate >= today)
+            .map((e) => ({ season: e.season, episode: e.episode, name: e.name, airDate: e.airDate }));
+          if (!s.upcoming.length) s.upcoming = [sched.nextEp];
+        } else {
+          s.upcoming = [];
+        }
+        s.nextScanAt = Date.now();
+        await DB.putShow(s);
+      } catch { /* on garde l'ancien cache pour cette série */ }
+      showScan(++done, targets.length);
+    });
+    scanning = false;
+    if (scanProgress) scanProgress.hidden = true;
+    if (stack[stack.length - 1] && topTitle.textContent === "À venir") renderAVenir();
+    else if (manual) toast("Mis à jour");
   }
 
   // ---- service worker + démarrage ----------------------------------
