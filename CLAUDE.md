@@ -36,6 +36,12 @@ Le dépôt public ne contient que la coquille de l'appli.
 
 ### Onglet Listes
 - Segmented **À voir / En cours / Vu** avec compteurs.
+- **Tri** (menu déroulant, choix retenu dans `localStorage` `season.sort`) :
+  *Vu récemment* (défaut — date du dernier épisode coché, ou date du film ;
+  calculée en parcourant tous les épisodes), *Ajout récent* (`createdAt`),
+  *Titre A→Z*. `show.lastWatchedAt` est tenu à jour par `recomputeAndSave` mais
+  le tri « vu récemment » recalcule depuis `DB.allEpisodes()` pour couvrir les
+  données importées.
 - Grille d'affiches ; pour les séries, barre de progression + `x/y épisodes`.
 - Le **statut d'une série est déduit** de la progression : 0 épisode = À voir,
   au moins 1 = En cours, tous = Vu. Le passage est automatique.

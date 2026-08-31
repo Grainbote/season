@@ -95,12 +95,26 @@
     const eps = show.type === "tv" ? await DB.episodesOf(show.key) : [];
     show.status = computeStatus(show, eps);
     show.watchedEpisodes = watchedCount(eps);
+    const lastEp = eps.reduce((m, e) => (e.watched && e.watchedAt > m ? e.watchedAt : m), 0);
+    show.lastWatchedAt = show.type === "movie" ? show.watchedAt || 0 : lastEp;
     await DB.putShow(show);
     return show;
   }
 
+  // date de dernier visionnage d'une série/film (pour le tri « vu récemment »)
+  function lastActivity(show, epMax) {
+    if (show.type === "movie") return show.watchedAt || show.updatedAt || 0;
+    return (epMax && epMax.get(show.key)) || show.lastWatchedAt || show.updatedAt || 0;
+  }
+
   // ---- LISTES ----------------------------------------------------------
   let listesFilter = "en_cours";
+  const SORTS = {
+    vu: "Vu récemment",
+    ajout: "Ajout récent",
+    titre: "Titre A→Z",
+  };
+  let listesSort = localStorage.getItem("season.sort") || "vu";
   async function renderListes() {
     render(spinner());
     const shows = await DB.allShows();
@@ -128,9 +142,39 @@
     }
     wrap.append(seg);
 
-    const inList = shows
-      .filter((s) => s.status === listesFilter)
-      .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    // barre de tri
+    const sortBar = el('<div class="sort-bar"><label>Trier :</label><select></select></div>');
+    const sel = sortBar.querySelector("select");
+    for (const [k, label] of Object.entries(SORTS)) {
+      const o = el(`<option value="${k}">${label}</option>`);
+      if (k === listesSort) o.selected = true;
+      sel.append(o);
+    }
+    sel.addEventListener("change", () => {
+      listesSort = sel.value;
+      localStorage.setItem("season.sort", listesSort);
+      renderListes();
+    });
+    wrap.append(sortBar);
+
+    // dernier visionnage par série (à partir de tous les épisodes vus)
+    let epMax = null;
+    if (listesSort === "vu") {
+      epMax = new Map();
+      for (const e of await DB.allEpisodes()) {
+        if (e.watched && e.watchedAt) {
+          const cur = epMax.get(e.showKey) || 0;
+          if (e.watchedAt > cur) epMax.set(e.showKey, e.watchedAt);
+        }
+      }
+    }
+
+    const sorters = {
+      vu: (a, b) => lastActivity(b, epMax) - lastActivity(a, epMax),
+      ajout: (a, b) => (b.createdAt || 0) - (a.createdAt || 0),
+      titre: (a, b) => (a.title || "").localeCompare(b.title || "", "fr", { sensitivity: "base" }),
+    };
+    const inList = shows.filter((s) => s.status === listesFilter).sort(sorters[listesSort] || sorters.vu);
 
     if (!inList.length) {
       wrap.append(el(
