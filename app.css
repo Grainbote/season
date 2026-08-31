@@ -23,6 +23,7 @@ html, body {
   color: var(--text);
   font-family: -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
   overscroll-behavior-y: none;
+  overflow-x: hidden;
 }
 
 body {
@@ -30,6 +31,8 @@ body {
   margin: 0 auto;
   min-height: 100dvh;
 }
+
+img { max-width: 100%; }
 
 /* ---- Barre du haut ---- */
 #topbar {
@@ -174,8 +177,7 @@ body {
   padding: 0;
   text-align: left;
   color: var(--text);
-  content-visibility: auto;
-  contain-intrinsic-size: auto 210px;
+  min-width: 0;
 }
 .poster-wrap {
   position: relative;
@@ -442,6 +444,6 @@ textarea.review:focus { outline: none; border-color: var(--accent); }
   line-height: 1.4;
 }
 
-@media (max-width: 360px) {
-  .poster-grid { grid-template-columns: repeat(2, 1fr); }
+@media (max-width: 400px) {
+  .poster-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
 }
