@@ -123,6 +123,19 @@ sur le sous-chemin `/season/`.
 
 Mettre à jour le service worker : changer `VERSION` dans `sw.js` à chaque
 modification de la coquille, sinon l'ancienne version reste en cache sur le téléphone.
+L'install du SW fetch les fichiers avec `cache: "reload"` — sans ça, un nouveau SW
+pouvait ré-enregistrer d'anciens fichiers encore dans le cache HTTP du navigateur
+(GitHub Pages sert `max-age=600`), symptôme vu le 31/08/2026 (CSS pas à jour sur
+le tél malgré un nouveau VERSION).
+
+## Pièges rencontrés
+
+- **`content-visibility: auto` sur `.poster-card` cassait la grille** (31/08/2026,
+  signalé « pas adapté à la taille de l'écran ») : la containment de taille fait
+  perdre au navigateur la largeur réelle des items → les colonnes `1fr` prenaient
+  210 px, grille à 446 px dans un viewport de 360 (OPPO force 360 dp). Retiré.
+  `html, body { overflow-x: hidden }` ajouté en garde-fou. Grille à 2 colonnes
+  jusqu'à 400 px de large.
 
 ## Limites connues / à vérifier avec elle
 
