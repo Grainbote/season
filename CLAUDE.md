@@ -63,7 +63,32 @@ Le dépôt public ne contient que la coquille de l'appli.
 - **Genres favoris** (barres) — exclut les titres encore « à voir ».
 - **Activité sur 12 mois** (barres) — d'après la date où chaque épisode/film a été coché.
 - **Sauvegarde** : export JSON (fichier téléchargé) et import — pour changer de
-  téléphone ou se prémunir d'un effacement du navigateur.
+  téléphone ou se prémunir d'un effacement du navigateur. L'import accepte aussi
+  un export TV Time **converti** au format Season (voir ci-dessous).
+
+## Import TV Time (fait une fois, le 31/08/2026)
+
+Son compte TV Time exporté le 10/07/2026 : `tvtime-export-2026-07-10.zip`
+(`tvtime-series-*.json`, `tvtime-movies-*.json`, `tvtime-summary-*.html`) —
+414 séries, 1 film, ~8280 épisodes vus. Chaque titre a un id **TVDB** (+ parfois
+IMDb) dans l'export.
+
+Conversion : `scratchpad/convert.mjs` (script jetable, pas dans le dépôt).
+- `/find/{tvdb}?external_source=tvdb_id` puis repli IMDb puis `/search/tv` →
+  récupère l'id **TMDB** (les 415 titres ont été reconnus, 0 échec).
+- `/tv/{id}` → affiche, genres, résumé, année, `episode_run_time`, structure des
+  saisons (nom + nombre d'épisodes).
+- Les épisodes **vus** viennent de l'export TV Time lui-même (numéro + `watched_at`),
+  pas d'appel `/season/*`. Seuls les épisodes vus sont écrits (les autres sont
+  décochés par défaut dans l'appli).
+- Sortie : `season-import-tvtime.json` au format `{version, shows, episodes}` —
+  importable tel quel via **Stats → Importer une sauvegarde**.
+- Pas de note importée (TV Time n'en met pas dans l'export) ; les 17 favoris TV
+  Time reçoivent l'avis « ★ Favori sur TV Time ».
+- `metaAt`/`epAt` = date d'import → l'appli ne re-télécharge pas tout TMDB au
+  premier lancement ; le rafraîchissement se fait au fil des ouvertures de fiches.
+- **Temps de visionnage des stats = approximatif** pour l'import : `episode_run_time`
+  est souvent vide chez TMDB, l'appli retombe alors sur 40 min/épisode.
 
 ## Modèle de données (IndexedDB `season`)
 
