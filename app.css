@@ -148,6 +148,8 @@ body {
   padding: 0;
   text-align: left;
   color: var(--text);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 210px;
 }
 .poster-wrap {
   position: relative;

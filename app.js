@@ -689,9 +689,10 @@
       if (!f) return;
       try {
         const data = JSON.parse(await f.text());
+        if (!data || !Array.isArray(data.shows)) throw new Error("format");
         await DB.importAll(data);
-        toast("Sauvegarde importée");
-        renderStats();
+        toast(`${data.shows.length} titres importés`);
+        resetTo(renderListes, "Listes", "listes");
       } catch {
         toast("Fichier illisible");
       }
