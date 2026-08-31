@@ -23,7 +23,6 @@ html, body {
   color: var(--text);
   font-family: -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
   overscroll-behavior-y: none;
-  overflow-x: hidden;
 }
 
 body {
@@ -33,6 +32,9 @@ body {
 }
 
 img { max-width: 100%; }
+
+/* garde-fou anti-débordement horizontal, sans bloquer le défilement vertical */
+#view { max-width: 100%; overflow-x: clip; }
 
 /* ---- Barre du haut ---- */
 #topbar {
