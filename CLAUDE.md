@@ -19,7 +19,7 @@ téléphone** (IndexedDB) — rien n'est envoyé nulle part.
 HTML/CSS/JS pur, **aucun framework, aucun outil de build** (comme ses autres projets).
 Le dépôt public ne contient que la coquille de l'appli.
 
-- `index.html` — structure, barre du haut (⚙ Réglages), 5 onglets (Séries, Films, À venir, Recherche, Stats)
+- `index.html` — structure, barre du haut (⚙ Réglages), 5 onglets (Séries, À venir, Films, Recherche, Stats)
 - `app.css` — thème sombre, mobile d'abord (max 560 px, safe-area iOS/Android)
 - `app.js` — toute la logique (navigation par pile de vues, rendu des écrans)
 - `db.js` — couche IndexedDB (stores `shows`, `episodes`)
