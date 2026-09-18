@@ -561,3 +561,7 @@ html[data-cols="5"] .poster-grid .poster-sub { font-size: 9.5px; }
 html[data-cols="4"] .poster-grid .badge-type,
 html[data-cols="5"] .poster-grid .badge-type { display: none; }
 html[data-cols="5"] .poster-grid .poster-wrap { border-radius: 7px; }
+
+/* onglet Séries : affiches sans légende (titre et x/y épisodes masqués) */
+.poster-grid.no-caption .poster-title,
+.poster-grid.no-caption .poster-sub { display: none; }

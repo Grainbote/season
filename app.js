@@ -254,7 +254,9 @@
         `</div>`
       ));
     } else {
-      const grid = el('<div class="poster-grid"></div>');
+      // onglet Séries : affiches seules (sans titre ni « x/y épisodes » dessous, demandé
+      // le 18/09/2026) ; la barre de progression sur l'affiche reste
+      const grid = el(`<div class="poster-grid${isMovie ? "" : " no-caption"}"></div>`);
       inList.forEach((s) => grid.append(posterCard(s)));
       wrap.append(grid);
     }
@@ -279,7 +281,7 @@
           : "Série"
         : "Film";
     const card = el(
-      `<button class="poster-card">
+      `<button class="poster-card" aria-label="${esc(show.title)}">
         <div class="poster-wrap">
           <span class="badge-type">${show.type === "tv" ? "Série" : "Film"}</span>
           ${img}${bar}
