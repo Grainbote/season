@@ -47,9 +47,9 @@ Le dépôt public ne contient que la coquille de l'appli.
   *Titre A→Z*. `show.lastWatchedAt` est tenu à jour par `recomputeAndSave` mais
   le tri « vu récemment » recalcule depuis `DB.allEpisodes()` pour couvrir les
   données importées.
-- Grille d'affiches. **Onglet Séries : affiches seules** (titre et `x/y épisodes` masqués
-  via `.poster-grid.no-caption`, demandé le 18/09/2026), barre de progression gardée
-  sur l'affiche ; titre en `aria-label`. Onglet Films : titre + « Film » dessous. Affiches des deux onglets à **angles droits** (pas d'arrondi) et **sans étiquette Série/Film** (inutile, déjà rangé par onglet) — 18/09/2026.
+- Grille d'affiches. **Onglets Séries et Films : affiches seules** (titre, `x/y épisodes`
+  et « Film » masqués via `.poster-grid.no-caption`, demandé le 18/09/2026), barre de
+  progression gardée sur l'affiche des séries ; titre en `aria-label`. Affiches des deux onglets à **angles droits** (pas d'arrondi) et **sans étiquette Série/Film** (inutile, déjà rangé par onglet) — 18/09/2026.
 - Le **statut d'une série est déduit** de la progression : 0 épisode = À voir,
   au moins 1 = En cours, tous = Vu. Le passage est automatique.
 

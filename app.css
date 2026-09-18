@@ -560,7 +560,7 @@ html[data-cols="4"] .poster-grid .poster-sub,
 html[data-cols="5"] .poster-grid .poster-sub { font-size: 9.5px; }
 html[data-cols="5"] .poster-grid .poster-wrap { border-radius: 7px; }
 
-/* onglet Séries : affiches sans légende (titre et x/y épisodes masqués) */
+/* onglets Séries et Films : affiches sans légende (titre, x/y épisodes, « Film ») */
 .poster-grid.no-caption .poster-title,
 .poster-grid.no-caption .poster-sub { display: none; }
 /* onglets Séries et Films : affiches à angles droits (demandé le 18/09/2026) */

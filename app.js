@@ -254,9 +254,9 @@
         `</div>`
       ));
     } else {
-      // onglet Séries : affiches seules (sans titre ni « x/y épisodes » dessous, demandé
-      // le 18/09/2026) ; la barre de progression sur l'affiche reste
-      const grid = el(`<div class="poster-grid${isMovie ? "" : " no-caption"}"></div>`);
+      // onglets Séries et Films : affiches seules, sans titre ni légende dessous
+      // (demandé le 18/09/2026) ; la barre de progression des séries reste
+      const grid = el('<div class="poster-grid no-caption"></div>');
       inList.forEach((s) => grid.append(posterCard(s)));
       wrap.append(grid);
     }
