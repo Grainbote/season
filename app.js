@@ -73,12 +73,47 @@
     topTitle.textContent = top.title;
     top.fn();
   }
+  let currentTab = "listes";
   function resetTo(fn, title, tab) {
     stack = [];
+    currentTab = tab;
     setTab(tab);
     go(fn, title);
+    armBackTrap();
   }
   backBtn.addEventListener("click", back);
+
+  // Bouton retour d'Android (le triangle) : il remonte l'historique du navigateur,
+  // or l'appli change d'écran sans y toucher → sans ça, « retour » la fermait.
+  // On garde une entrée « piège » au-dessus de la 1ʳᵉ : chaque retour la consomme,
+  // on fait le retour dans l'appli, puis on la remet.
+  let trapArmed = false;
+  let exitAsked = false;
+  function armBackTrap() {
+    if (trapArmed) return;
+    history.pushState({ seasonTrap: true }, "");
+    trapArmed = true;
+  }
+  // après un rechargement (mise à jour auto), le piège est déjà en place
+  if (history.state && history.state.seasonTrap) trapArmed = true;
+  else history.replaceState({ seasonRoot: true }, "");
+  window.addEventListener("popstate", () => {
+    trapArmed = false;
+    if (stack.length > 1) {
+      back(); // fiche / réglages → écran précédent
+    } else if (currentTab !== "listes") {
+      resetTo(renderSeries, "Séries", "listes"); // autre onglet → Séries
+    } else if (!exitAsked) {
+      exitAsked = true;
+      toast("Appuie encore pour quitter");
+      setTimeout(() => { exitAsked = false; armBackTrap(); }, 2200);
+      return;
+    } else {
+      return; // 2ᵉ appui : on laisse l'appli se fermer
+    }
+    exitAsked = false;
+    armBackTrap();
+  });
   document.getElementById("settingsBtn").addEventListener("click", () => {
     if (stack[stack.length - 1]?.fn === renderReglages) return;
     go(renderReglages, "Réglages");

@@ -169,6 +169,14 @@ Scripts jetables (scratchpad, pas dans le dépôt) : `convert-lb.mjs`, `add-seri
   Stats → Importer). Après import : 2539 films (1640 vus, 899 à voir), 428 séries.
 - Champ `source: "letterboxd"` sur les fiches importées.
 
+## Bouton retour d'Android
+
+Géré dans `app.js` (`armBackTrap`, `popstate`) : une entrée d'historique « piège »
+(`{seasonTrap:true}`) au-dessus de la racine ; chaque retour système la consomme →
+fiche/réglages : écran précédent ; autre onglet : Séries ; Séries : toast
+« Appuie encore pour quitter » (2,2 s), 2ᵉ appui = sortie. Le piège est remis après
+chaque retour géré. Avant (jusqu'au 18/09/2026), retour fermait l'appli.
+
 ## Modèle de données (IndexedDB `season`)
 
 - `shows`, clé `key` = `tv:<tmdbId>` ou `movie:<tmdbId>` : `type`, `title`, `year`,
