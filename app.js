@@ -431,19 +431,31 @@
 
     // --- note ---
     wrap.append(el('<div class="section-title">Ma note</div>'));
+    // demi-étoiles : moitié gauche d'une étoile = x,5 ; moitié droite = x ;
+    // retaper la note actuelle la remet à 0
     const stars = el('<div class="stars"></div>');
+    const paint = () => {
+      stars.querySelectorAll("span").forEach((x) => {
+        const v = +x.dataset.v, r = show.rating || 0;
+        x.classList.toggle("on", v <= r);
+        x.classList.toggle("half", v - 0.5 === r);
+      });
+      starsVal.textContent = show.rating ? String(show.rating).replace(".", ",") + " / 5" : "";
+    };
     for (let i = 1; i <= 5; i++) {
       const s = el(`<span data-v="${i}">★</span>`);
-      if (i <= (show.rating || 0)) s.classList.add("on");
-      s.addEventListener("click", async () => {
-        show.rating = show.rating === i ? 0 : i;
+      s.addEventListener("click", async (ev) => {
+        const box = s.getBoundingClientRect();
+        const v = ev.clientX - box.left < box.width / 2 ? i - 0.5 : i;
+        show.rating = show.rating === v ? 0 : v;
         await DB.putShow(show);
-        stars.querySelectorAll("span").forEach((x) =>
-          x.classList.toggle("on", +x.dataset.v <= show.rating)
-        );
+        paint();
       });
       stars.append(s);
     }
+    const starsVal = el('<em class="stars-val"></em>');
+    stars.append(starsVal);
+    paint();
     wrap.append(stars);
 
     // --- avis ---

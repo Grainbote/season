@@ -369,9 +369,16 @@ img { max-width: 100%; }
   margin: 20px 0 10px;
 }
 
-.stars { display: flex; gap: 4px; font-size: 26px; color: var(--line); }
+.stars { display: flex; align-items: center; gap: 4px; font-size: 30px; color: var(--line); }
 .stars span { cursor: pointer; line-height: 1; }
 .stars span.on { color: var(--star); }
+/* demi-étoile : moitié gauche dorée, moitié droite grise */
+.stars span.half {
+  background: linear-gradient(90deg, var(--star) 50%, var(--line) 50%);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+}
+.stars-val { font-style: normal; font-size: 13px; color: var(--text-dim); margin-left: 8px; }
 
 textarea.review {
   width: 100%;

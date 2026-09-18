@@ -2,7 +2,7 @@
  * - la coquille (html/css/js) : cache d'abord, réseau si absent
  * - TMDB (données + images) : on sert le cache et on rafraîchit en arrière-plan
  */
-const VERSION = "season-v14";
+const VERSION = "season-v15";
 const SHELL = VERSION + "-shell";
 const RUNTIME = VERSION + "-runtime";
 

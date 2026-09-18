@@ -62,7 +62,7 @@ Le dépôt public ne contient que la coquille de l'appli.
   - Film : boutons *À voir* / *Vu*.
   - Série : *À voir* et *Vu* cochent / décochent toute la série (confirmation) ;
     *En cours* est un simple témoin (non cliquable).
-- **Note** : 0 à 5 étoiles (recliquer la même étoile remet à 0).
+- **Note** : 0 à 5 étoiles **par demi-étoiles** (moitié gauche d'une étoile = x,5, moitié droite = x ; retaper la note actuelle remet à 0 ; valeur « 3,5 / 5 » affichée à côté). `show.rating` peut donc valoir 0,5, 1, 1,5… 5.
 - **Avis** : zone de texte, enregistrement automatique (600 ms après la frappe + au blur).
 - **Épisodes** (séries) : accordéon par saison, case à cocher par épisode,
   compteur et mini-barre de saison mis à jour **en direct**, bouton
