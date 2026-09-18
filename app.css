@@ -249,6 +249,20 @@ img { max-width: 100%; }
 .reco-note { font-size: 12px; color: var(--text-dim); margin-top: 10px; }
 .reco-note .link-btn { font-size: 12px; }
 
+/* ---- Où regarder (fiche) ---- */
+.wtw-row { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 8px; }
+.wtw-label { flex: 0 0 76px; font-size: 12px; color: var(--text-dim); padding-top: 6px; }
+.wtw-list { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.wtw-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--bg-elev); border: 1px solid var(--line);
+  border-radius: 999px; padding: 3px 10px 3px 3px; font-size: 12px;
+}
+.wtw-chip img { width: 22px; height: 22px; border-radius: 6px; }
+.wtw-chip.is-mine { border-color: var(--accent); background: var(--accent-soft); }
+.wtw-more { color: var(--text-dim); font: inherit; font-size: 12px; padding: 5px 12px; cursor: pointer; }
+.wtw-src { display: inline-block; font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+
 /* ---- Réglages : plateformes ---- */
 #settingsBtn { margin-left: auto; font-size: 22px; flex: none; }
 .prov-chosen { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }

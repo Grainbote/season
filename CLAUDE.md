@@ -68,6 +68,14 @@ Le dépôt public ne contient que la coquille de l'appli.
   compteur et mini-barre de saison mis à jour **en direct**, bouton
   *Tout cocher / décocher la saison*.
 - **Retirer de mes listes** (destructif, confirmation) — efface la série et ses épisodes.
+- **Où regarder** (sous le résumé, aussi sur une fiche pas encore ajoutée ; masqué
+  hors-ligne) : `TMDB.whereToWatch` → `/{type}/{id}/watch/providers`, région FR
+  (données JustWatch, lien « Source : JustWatch »). 3 lignes : *Abonnement*
+  (flatrate), *Gratuit* (free + ads), *Location / achat* (rent + buy) ; une plateforme
+  n'apparaît qu'une fois (1ʳᵉ ligne gagnante). Variantes fondues dans la principale
+  (« Netflix Standard with Ads » → Netflix, par préfixe de nom). **Ses plateformes**
+  (Réglages) en premier, entourées en bleu. 5 max par ligne puis bouton « +N ».
+  Rien → « Pas disponible en streaming en France pour l'instant ».
 - **Dans le même genre** (bas de fiche, aussi sur une fiche pas encore ajoutée ;
   masqué hors-ligne) : deux rangées d'affiches défilant à l'horizontale, tap → fiche.
   `TMDB.related(type, id)` = 1 appel `/{type}/{id}?append_to_response=recommendations,similar`

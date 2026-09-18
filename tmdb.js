@@ -118,9 +118,19 @@ window.TMDB = (() => {
 
     // plateformes (ids) où un titre se regarde en abonnement ou gratuitement dans le pays
     async availableOn(type, id) {
+      const r = await this.whereToWatch(type, id);
+      return [...new Set([...r.flatrate, ...r.free, ...r.ads].map((p) => p.id))];
+    },
+
+    // « Où regarder » d'une fiche : plateformes par mode (données JustWatch via TMDB)
+    async whereToWatch(type, id) {
       const d = await call(`/${type}/${id}/watch/providers`);
       const r = (d.results || {})[REGION] || {};
-      return [...new Set([...(r.flatrate || []), ...(r.free || []), ...(r.ads || [])].map((p) => p.provider_id))];
+      const list = (k) => (r[k] || [])
+        .sort((a, b) => (a.display_priority ?? 99) - (b.display_priority ?? 99))
+        .map((p) => ({ id: p.provider_id, name: p.provider_name, logo: p.logo_path }));
+      return { link: r.link || "", flatrate: list("flatrate"), free: list("free"), ads: list("ads"),
+               rent: list("rent"), buy: list("buy") };
     },
 
     // suggestions « dans le même genre » pour une fiche : recommandations TMDB (+ titres

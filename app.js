@@ -422,6 +422,7 @@
     ));
 
     if (show.overview) wrap.append(el(`<p class="overview">${esc(show.overview)}</p>`));
+    wrap.append(whereToWatchSection(show));
 
     if (!saved) {
       const addBtn = el(`<button class="btn-primary">＋ Ajouter à mes listes</button>`);
@@ -523,6 +524,61 @@
 
     render(wrap);
     return wrap;
+  }
+
+  // ---- « Où regarder » (fiche) --------------------------------------------
+  function whereToWatchSection(show) {
+    const box = el('<div class="wtw"></div>');
+    if (!navigator.onLine || !TMDB.hasKey()) return box;
+    (async () => {
+      let r;
+      try {
+        r = await TMDB.whereToWatch(show.type, show.tmdbId || show.key.split(":")[1]);
+      } catch { return; }
+      const mine = new Set(myProviders().map((p) => p.id));
+      // ses plateformes d'abord, puis l'ordre TMDB ; sans doublon d'une ligne à l'autre
+      const used = new Set();
+      // variantes d'une même plateforme (« Netflix Standard with Ads », « HBO Max Amazon
+      // Channel »…) fondues dans la principale ; si la variante est à elle, la principale l'est
+      const pick = (...lists) => {
+        const all = lists.flat().filter((p) => !used.has(p.id) && used.add(p.id));
+        const base = (p) => all.find((q) => q !== p && p.name.startsWith(q.name + " "));
+        const kept = all.filter((p) => !base(p));
+        all.filter(base).forEach((v) => { if (mine.has(v.id)) base(v).mineVia = true; });
+        kept.forEach((p) => { p.isMine = mine.has(p.id) || !!p.mineVia; });
+        return kept.sort((a, b) => b.isMine - a.isMine);
+      };
+      const groups = [
+        ["Abonnement", pick(r.flatrate)],
+        ["Gratuit", pick(r.free, r.ads)],
+        ["Location / achat", pick(r.rent, r.buy)],
+      ].filter(([, l]) => l.length);
+
+      box.append(el('<div class="section-title">Où regarder</div>'));
+      if (!groups.length) {
+        box.append(el('<div class="poster-sub">Pas disponible en streaming en France pour l\'instant.</div>'));
+        return;
+      }
+      for (const [label, list] of groups) {
+        const row = el(`<div class="wtw-row"><div class="wtw-label">${label}</div><div class="wtw-list"></div></div>`);
+        const chip = (p) => el(
+          `<span class="wtw-chip${p.isMine ? " is-mine" : ""}">${
+            p.logo ? `<img src="${TMDB.logo(p.logo)}" alt="">` : ""}${esc(p.name)}</span>`
+        );
+        const MAX = 5; // au-delà, bouton « +N » (la location en aligne souvent une douzaine)
+        list.slice(0, MAX).forEach((p) => row.lastElementChild.append(chip(p)));
+        if (list.length > MAX) {
+          const more = el(`<button class="wtw-chip wtw-more">+${list.length - MAX}</button>`);
+          more.addEventListener("click", () => { more.replaceWith(...list.slice(MAX).map(chip)); });
+          row.lastElementChild.append(more);
+        }
+        box.append(row);
+      }
+      if (r.link) {
+        box.append(el(`<a class="wtw-src" href="${esc(r.link)}" target="_blank" rel="noopener">Source : JustWatch ↗</a>`));
+      }
+    })();
+    return box;
   }
 
   // ---- « Dans le même genre » : suggestions pas encore vues --------------
