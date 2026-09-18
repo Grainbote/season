@@ -551,12 +551,12 @@
       const groups = [
         ["Abonnement", pick(r.flatrate)],
         ["Gratuit", pick(r.free, r.ads)],
-        ["Location / achat", pick(r.rent, r.buy)],
+        // pas de location / achat : elle ne loue pas (demandé le 18/09/2026)
       ].filter(([, l]) => l.length);
 
       box.append(el('<div class="section-title">Où regarder</div>'));
       if (!groups.length) {
-        box.append(el('<div class="poster-sub">Pas disponible en streaming en France pour l\'instant.</div>'));
+        box.append(el('<div class="poster-sub">Pas disponible en abonnement ni gratuitement en France pour l\'instant.</div>'));
         return;
       }
       for (const [label, list] of groups) {
@@ -565,7 +565,7 @@
           `<span class="wtw-chip${p.isMine ? " is-mine" : ""}">${
             p.logo ? `<img src="${TMDB.logo(p.logo)}" alt="">` : ""}${esc(p.name)}</span>`
         );
-        const MAX = 5; // au-delà, bouton « +N » (la location en aligne souvent une douzaine)
+        const MAX = 5; // au-delà, bouton « +N »
         list.slice(0, MAX).forEach((p) => row.lastElementChild.append(chip(p)));
         if (list.length > MAX) {
           const more = el(`<button class="wtw-chip wtw-more">+${list.length - MAX}</button>`);
