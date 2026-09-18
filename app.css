@@ -227,6 +227,20 @@ img { max-width: 100%; }
   text-transform: uppercase; letter-spacing: 0.4px;
 }
 
+/* ---- Suggestions « dans le même genre » (fiche) ---- */
+.reco-row {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  margin: 0 -14px;
+  padding: 0 14px 6px;
+  scrollbar-width: none;
+}
+.reco-row::-webkit-scrollbar { display: none; }
+.reco-card { flex: 0 0 104px; width: 104px; scroll-snap-align: start; }
+.badge-list { background: var(--accent); }
+
 /* ---- Recherche ---- */
 .search-box {
   display: flex;

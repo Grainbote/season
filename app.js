@@ -383,6 +383,7 @@
         go(() => renderDetail(show.key), show.title, { push: false });
       });
       wrap.append(addBtn);
+      wrap.append(relatedSection(show));
       render(wrap);
       return wrap;
     }
@@ -443,6 +444,8 @@
       show.seasons.forEach((s) => wrap.append(seasonBlock(show, s, watchedMap)));
     }
 
+    wrap.append(relatedSection(show));
+
     // --- retirer ---
     const del = el('<button class="link-btn" style="color:var(--warn);margin-top:24px">Retirer de mes listes</button>');
     del.addEventListener("click", async () => {
@@ -455,6 +458,61 @@
 
     render(wrap);
     return wrap;
+  }
+
+  // ---- « Dans le même genre » : suggestions pas encore vues --------------
+  const relatedCache = new Map();
+  function relatedSection(show) {
+    const box = el('<div class="related"></div>');
+    if (!navigator.onLine || !TMDB.hasKey()) return box;
+    box.append(spinner());
+    (async () => {
+      try {
+        let data = relatedCache.get(show.key);
+        if (!data) {
+          data = await TMDB.related(show.type, show.tmdbId || show.key.split(":")[1]);
+          relatedCache.set(show.key, data);
+        }
+        // on masque ce qui est vu ou commencé ; « à voir » reste, avec un repère
+        const mine = new Map((await DB.allShows()).map((s) => [s.key, s.status]));
+        const keep = (list) =>
+          list.filter((x) => {
+            const k = `${x.type}:${x.tmdbId}`;
+            const st = mine.get(k);
+            return k !== show.key && st !== "vu" && st !== "en_cours";
+          }).slice(0, 15);
+        const same = keep(data.same);
+        const cross = keep(data.cross);
+        box.replaceChildren();
+        const row = (title, list) => {
+          if (!list.length) return;
+          box.append(el(`<div class="section-title">${title}</div>`));
+          const r = el('<div class="reco-row"></div>');
+          list.forEach((x) => r.append(recoCard(x, mine.get(`${x.type}:${x.tmdbId}`))));
+          box.append(r);
+        };
+        row(`Dans le même genre · ${show.type === "tv" ? "séries" : "films"}`, same);
+        row(`Dans le même genre · ${show.type === "tv" ? "films" : "séries"}`, cross);
+      } catch {
+        box.replaceChildren();
+      }
+    })();
+    return box;
+  }
+
+  function recoCard(x, status) {
+    const card = el(
+      `<button class="poster-card reco-card">
+        <div class="poster-wrap">
+          ${status ? '<span class="badge-type badge-list">À voir</span>' : ""}
+          <img loading="lazy" src="${TMDB.poster(x.poster, "w185")}" alt="">
+        </div>
+        <div class="poster-title">${esc(x.title)}</div>
+        <div class="poster-sub">${x.type === "tv" ? "Série" : "Film"}${x.year ? " · " + x.year : ""}</div>
+      </button>`
+    );
+    card.addEventListener("click", () => go(() => renderDetail(`${x.type}:${x.tmdbId}`, x), x.title));
+    return card;
   }
 
   function seasonBlock(show, season, watchedMap) {

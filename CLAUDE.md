@@ -63,6 +63,20 @@ Le dépôt public ne contient que la coquille de l'appli.
   compteur et mini-barre de saison mis à jour **en direct**, bouton
   *Tout cocher / décocher la saison*.
 - **Retirer de mes listes** (destructif, confirmation) — efface la série et ses épisodes.
+- **Dans le même genre** (bas de fiche, aussi sur une fiche pas encore ajoutée ;
+  masqué hors-ligne) : deux rangées d'affiches défilant à l'horizontale, tap → fiche.
+  `TMDB.related(type, id)` = 1 appel `/{type}/{id}?append_to_response=recommendations,similar`
+  + 5 pages `/discover/{autre type}`.
+  - Rangée 1, **même type** : recommandations TMDB puis titres « similaires » en complément.
+  - Rangée 2, **l'autre type** (films pour une série, séries pour un film) : genres
+    traduits via `GENRE_BRIDGE` (les ids diffèrent entre séries et films ; téléréalité,
+    horreur… sans équivalent → ignorés), *Drame* ignoré s'il y a d'autres genres,
+    pas d'animation/jeunesse si le titre de départ n'en est pas ; classé par nombre
+    de genres en commun (jusqu'à 3, abaissé si < 8 résultats) puis popularité.
+    Forcément plus approximatif que la rangée 1.
+  - **Filtre** : titres **Vu** ou **En cours** masqués ; ceux **À voir** restent avec
+    un badge « À voir ». 15 max par rangée. Résultat TMDB mis en cache en mémoire
+    (`relatedCache`) le temps de la session.
 
 ### Onglet À venir
 - Prochaines sorties d'épisodes des séries suivies, groupées par date (relatif
