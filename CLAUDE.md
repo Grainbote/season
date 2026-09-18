@@ -200,6 +200,15 @@ Scripts jetables (scratchpad, pas dans le dépôt) : `convert-lb.mjs`, `add-seri
   Stats → Importer). Après import : 2539 films (1640 vus, 899 à voir), 428 séries.
 - Champ `source: "letterboxd"` sur les fiches importées.
 
+## Position au retour
+
+`go()` mémorise `window.scrollY` (+ `view.scrollTop`) sur l'écran qu'on quitte ; `back()`
+prépare `pendingScroll`, que `render()` applique au 1ᵉʳ rendu non-spinner via
+`restoreScroll` : réessaie toutes les 30 ms (pas `requestAnimationFrame`, bloqué quand
+la page est masquée) jusqu'à ce que la page soit assez haute (contenu chargé après
+coup, ex. vue genre), 2,5 s max ; abandon si elle touche l'écran ou change d'écran
+(`navSeq`). `history.scrollRestoration = "manual"`. Changer d'onglet repart en haut.
+
 ## Bouton retour d'Android
 
 Géré dans `app.js` (`armBackTrap`, `popstate`) : une entrée d'historique « piège »

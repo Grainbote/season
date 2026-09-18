@@ -68,13 +68,52 @@
   function setTab(tab) {
     [...tabbar.children].forEach((b) => b.classList.toggle("is-active", b.dataset.tab === tab));
   }
+  // Position de défilement : mémorisée sur l'écran qu'on quitte (go), rendue au retour
+  // (back). L'écran se redessine au retour, souvent en 2 temps (spinner, puis contenu,
+  // parfois chargé après coup) : on attend donc que la page soit assez haute.
+  let pendingScroll = null;
+  // c'est l'appli qui gère la position au retour, pas le navigateur
+  if ("scrollRestoration" in history) history.scrollRestoration = "manual";
   function render(node) {
     view.replaceChildren(node);
+    const isSpinner = node.classList && node.classList.contains("spinner");
+    if (pendingScroll && !isSpinner) {
+      const pos = pendingScroll;
+      pendingScroll = null;
+      restoreScroll(pos);
+      return;
+    }
     view.scrollTo(0, 0);
     window.scrollTo(0, 0);
   }
+  function restoreScroll({ y, vy, seq }) {
+    const until = Date.now() + 2500;
+    let cancelled = false;
+    const stop = () => { cancelled = true; };
+    window.addEventListener("touchstart", stop, { once: true, passive: true });
+    window.addEventListener("wheel", stop, { once: true, passive: true });
+    const done = () => {
+      window.removeEventListener("touchstart", stop);
+      window.removeEventListener("wheel", stop);
+    };
+    const step = () => {
+      if (cancelled || seq !== navSeq) return done(); // elle a bougé ou changé d'écran
+      view.scrollTop = vy;
+      window.scrollTo(0, y);
+      const ok = Math.abs(window.scrollY - y) < 2 && Math.abs(view.scrollTop - vy) < 2;
+      if (!ok && Date.now() < until) setTimeout(step, 30); // (rAF s'arrête si la page est masquée)
+      else done();
+    };
+    step();
+  }
   function go(fn, title, { push = true } = {}) {
     navSeq++;
+    pendingScroll = null;
+    if (push && stack.length) {
+      const cur = stack[stack.length - 1];
+      cur.y = window.scrollY;
+      cur.vy = view.scrollTop;
+    }
     if (push) stack.push({ fn, title });
     else stack[stack.length - 1] = { fn, title };
     backBtn.hidden = stack.length <= 1;
@@ -86,6 +125,7 @@
     navSeq++;
     stack.pop();
     const top = stack[stack.length - 1];
+    pendingScroll = top.y || top.vy ? { y: top.y || 0, vy: top.vy || 0, seq: navSeq } : null;
     backBtn.hidden = stack.length <= 1;
     topTitle.textContent = top.title;
     top.fn();
