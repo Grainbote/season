@@ -233,6 +233,7 @@ img { max-width: 100%; }
   gap: 10px;
   overflow-x: auto;
   scroll-snap-type: x proximity;
+  scroll-padding: 0 14px;
   margin: 0 -14px;
   padding: 0 14px 6px;
   scrollbar-width: none;
@@ -240,6 +241,32 @@ img { max-width: 100%; }
 .reco-row::-webkit-scrollbar { display: none; }
 .reco-card { flex: 0 0 104px; width: 104px; scroll-snap-align: start; }
 .badge-list { background: var(--accent); }
+.prov-logo {
+  position: absolute; right: 5px; bottom: 5px;
+  width: 24px !important; height: 24px !important;
+  border-radius: 6px; box-shadow: 0 0 0 1px #00000066;
+}
+.reco-note { font-size: 12px; color: var(--text-dim); margin-top: 10px; }
+.reco-note .link-btn { font-size: 12px; }
+
+/* ---- Réglages : plateformes ---- */
+#settingsBtn { margin-left: auto; font-size: 22px; flex: none; }
+.prov-chosen { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.prov-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--accent-soft); border: 1px solid var(--accent); color: var(--text);
+  border-radius: 999px; padding: 4px 10px 4px 4px; font: inherit; font-size: 13px; cursor: pointer;
+}
+.prov-chip img { width: 22px; height: 22px; border-radius: 50%; }
+.prov-chip span { color: var(--text-dim); font-size: 11px; }
+.prov-list { display: flex; flex-direction: column; }
+.prov-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 2px; border-bottom: 1px solid var(--line); cursor: pointer;
+}
+.prov-row img, .prov-noimg { width: 34px; height: 34px; border-radius: 8px; flex: none; background: var(--bg-elev-2); }
+.prov-name { flex: 1; min-width: 0; font-size: 14px; }
+.prov-row input { width: 20px; height: 20px; accent-color: var(--accent); flex: none; }
 
 /* ---- Recherche ---- */
 .search-box {

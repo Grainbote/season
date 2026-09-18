@@ -39,6 +39,15 @@
   }
   const spinner = () => el('<div class="spinner"></div>');
 
+  // ---- réglages (dans le téléphone, localStorage) ---------------------------
+  // plateformes de streaming choisies : [{id, name, logo}] — vide = pas de filtre
+  function myProviders() {
+    try { return JSON.parse(localStorage.getItem("season.providers") || "[]"); } catch { return []; }
+  }
+  function setMyProviders(list) {
+    localStorage.setItem("season.providers", JSON.stringify(list));
+  }
+
   // ---- navigation (pile de vues) ---------------------------------------
   let stack = [];
   function setTab(tab) {
@@ -70,6 +79,10 @@
     go(fn, title);
   }
   backBtn.addEventListener("click", back);
+  document.getElementById("settingsBtn").addEventListener("click", () => {
+    if (stack[stack.length - 1]?.fn === renderReglages) return;
+    go(renderReglages, "Réglages");
+  });
   tabbar.addEventListener("click", (e) => {
     const b = e.target.closest(".tab");
     if (!b) return;
@@ -466,21 +479,22 @@
     const box = el('<div class="related"></div>');
     if (!navigator.onLine || !TMDB.hasKey()) return box;
     box.append(spinner());
+    const provs = myProviders();
+    const provById = new Map(provs.map((p) => [p.id, p]));
     (async () => {
       try {
-        let data = relatedCache.get(show.key);
-        if (!data) {
-          data = await TMDB.related(show.type, show.tmdbId || show.key.split(":")[1]);
-          relatedCache.set(show.key, data);
-        }
         // on masque ce qui est vu ou commencé ; « à voir » reste, avec un repère
         const mine = new Map((await DB.allShows()).map((s) => [s.key, s.status]));
-        const keep = (list) =>
-          list.filter((x) => {
-            const k = `${x.type}:${x.tmdbId}`;
-            const st = mine.get(k);
-            return k !== show.key && st !== "vu" && st !== "en_cours";
-          }).slice(0, 15);
+        const hidden = (k) => k === show.key || mine.get(k) === "vu" || mine.get(k) === "en_cours";
+        const cacheKey = show.key + "|" + provs.map((p) => p.id).join(",");
+        let data = relatedCache.get(cacheKey);
+        if (!data) {
+          const skip = new Set([...mine.keys()].filter(hidden));
+          data = await TMDB.related(show.type, show.tmdbId || show.key.split(":")[1],
+            { prov: provs.map((p) => p.id), skip });
+          relatedCache.set(cacheKey, data);
+        }
+        const keep = (list) => list.filter((x) => !hidden(`${x.type}:${x.tmdbId}`)).slice(0, 15);
         const same = keep(data.same);
         const cross = keep(data.cross);
         box.replaceChildren();
@@ -488,11 +502,19 @@
           if (!list.length) return;
           box.append(el(`<div class="section-title">${title}</div>`));
           const r = el('<div class="reco-row"></div>');
-          list.forEach((x) => r.append(recoCard(x, mine.get(`${x.type}:${x.tmdbId}`))));
+          list.forEach((x) => r.append(recoCard(x, mine.get(`${x.type}:${x.tmdbId}`), provById)));
           box.append(r);
         };
         row(`Dans le même genre · ${show.type === "tv" ? "séries" : "films"}`, same);
         row(`Dans le même genre · ${show.type === "tv" ? "films" : "séries"}`, cross);
+        const none = !same.length && !cross.length;
+        const note = provs.length
+          ? `${none ? "Aucune suggestion sur tes plateformes. " : "Seulement sur tes plateformes. "}`
+          : "Toutes plateformes confondues. ";
+        const foot = el(`<div class="reco-note">${note}<button class="link-btn">${
+          provs.length ? "Modifier mes plateformes" : "Choisir mes plateformes"}</button></div>`);
+        foot.querySelector("button").addEventListener("click", () => go(renderReglages, "Réglages"));
+        box.append(foot);
       } catch {
         box.replaceChildren();
       }
@@ -500,12 +522,15 @@
     return box;
   }
 
-  function recoCard(x, status) {
+  function recoCard(x, status, provById = new Map()) {
+    // logo de la (1ʳᵉ) plateforme où le titre est dispo, parmi les siennes
+    const p = (x.on || []).map((id) => provById.get(id)).find((q) => q && q.logo);
     const card = el(
       `<button class="poster-card reco-card">
         <div class="poster-wrap">
           ${status ? '<span class="badge-type badge-list">À voir</span>' : ""}
           <img loading="lazy" src="${TMDB.poster(x.poster, "w185")}" alt="">
+          ${p ? `<img class="prov-logo" src="${TMDB.logo(p.logo)}" alt="${esc(p.name)}" title="${esc(p.name)}">` : ""}
         </div>
         <div class="poster-title">${esc(x.title)}</div>
         <div class="poster-sub">${x.type === "tv" ? "Série" : "Film"}${x.year ? " · " + x.year : ""}</div>
@@ -513,6 +538,70 @@
     );
     card.addEventListener("click", () => go(() => renderDetail(`${x.type}:${x.tmdbId}`, x), x.title));
     return card;
+  }
+
+  // ---- RÉGLAGES -----------------------------------------------------
+  let providersList = null; // liste TMDB, gardée le temps de la session
+  async function renderReglages() {
+    const wrap = el('<div></div>');
+    wrap.append(el('<div class="section-title">Mes plateformes de streaming</div>'));
+    wrap.append(el(
+      `<p class="poster-sub" style="margin-bottom:12px">Les suggestions « Dans le même genre » ne
+       montreront que ce que tu peux regarder sur ces plateformes (abonnement ou gratuit, en France).
+       Rien de coché = toutes plateformes.</p>`
+    ));
+    const chosenBox = el('<div class="prov-chosen"></div>');
+    const search = el('<div class="search-box"><input type="search" placeholder="Chercher une plateforme…" autocomplete="off"></div>');
+    const listBox = el('<div class="prov-list"></div>');
+    wrap.append(chosenBox, search, listBox);
+    render(wrap);
+
+    let chosen = myProviders();
+    const isOn = (id) => chosen.some((p) => p.id === id);
+    const toggle = (p) => {
+      chosen = isOn(p.id) ? chosen.filter((q) => q.id !== p.id) : [...chosen, { id: p.id, name: p.name, logo: p.logo }];
+      setMyProviders(chosen);
+      relatedCache.clear();
+      draw();
+    };
+    const chip = (p) => {
+      const c = el(`<button class="prov-chip">${p.logo ? `<img src="${TMDB.logo(p.logo)}" alt="">` : ""}${esc(p.name)} <span>✕</span></button>`);
+      c.addEventListener("click", () => toggle(p));
+      return c;
+    };
+    const input = search.querySelector("input");
+    function draw() {
+      chosenBox.replaceChildren(...(chosen.length
+        ? chosen.map(chip)
+        : [el('<div class="poster-sub">Aucune plateforme choisie.</div>')]));
+      if (!providersList) return;
+      const q = input.value.trim().toLowerCase();
+      const items = providersList.filter((p) => !q || p.name.toLowerCase().includes(q)).slice(0, q ? 80 : 40);
+      listBox.replaceChildren(...items.map((p) => {
+        const row = el(
+          `<label class="prov-row">
+            ${p.logo ? `<img src="${TMDB.logo(p.logo)}" alt="">` : '<span class="prov-noimg"></span>'}
+            <span class="prov-name">${esc(p.name)}</span>
+            <input type="checkbox" ${isOn(p.id) ? "checked" : ""}>
+          </label>`
+        );
+        row.querySelector("input").addEventListener("change", () => toggle(p));
+        return row;
+      }));
+    }
+    input.addEventListener("input", draw);
+    draw();
+
+    if (!providersList) {
+      listBox.replaceChildren(spinner());
+      try {
+        providersList = await TMDB.providers();
+      } catch {
+        listBox.replaceChildren(el(`<div class="empty">Liste des plateformes indisponible${navigator.onLine ? "" : " (pas de réseau)"}.</div>`));
+        return;
+      }
+      draw();
+    }
   }
 
   function seasonBlock(show, season, watchedMap) {
@@ -777,6 +866,7 @@
     const exp = el('<button class="link-btn">⤓ Exporter mes données (fichier)</button>');
     exp.addEventListener("click", async () => {
       const data = await DB.exportAll();
+      data.settings = { providers: myProviders() };
       const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
@@ -794,6 +884,7 @@
         const data = JSON.parse(await f.text());
         if (!data || !Array.isArray(data.shows)) throw new Error("format");
         await DB.importAll(data);
+        if (data.settings && Array.isArray(data.settings.providers)) setMyProviders(data.settings.providers);
         toast(`${data.shows.length} titres importés`);
         resetTo(renderListes, "Listes", "listes");
       } catch {

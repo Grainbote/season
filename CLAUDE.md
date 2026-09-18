@@ -76,7 +76,23 @@ Le dépôt public ne contient que la coquille de l'appli.
     Forcément plus approximatif que la rangée 1.
   - **Filtre** : titres **Vu** ou **En cours** masqués ; ceux **À voir** restent avec
     un badge « À voir ». 15 max par rangée. Résultat TMDB mis en cache en mémoire
-    (`relatedCache`) le temps de la session.
+    (`relatedCache`, clé = fiche + plateformes choisies) le temps de la session.
+  - **Plateformes** (si choisies dans Réglages) : seuls les titres dispo en
+    **abonnement, gratuit ou avec pub** (`flatrate|free|ads`, pas location/achat) sur
+    une de ses plateformes, en France (`REGION`, `config.js` peut le surcharger).
+    Rangée 1 : chaque recommandation est vérifiée via `/{type}/{id}/watch/providers`
+    (40 max, par lots de 8), complétée par un `/discover` du même type filtré par
+    plateformes si < 10. Rangée 2 : `/discover` avec `with_watch_providers`, puis
+    vérif pour le logo. Logo de la plateforme en bas à droite de chaque affiche.
+    ~4-5 s de chargement (spinner). Lien « Choisir / Modifier mes plateformes » sous
+    les rangées.
+
+### Réglages (bouton ⚙ en haut à droite)
+- **Mes plateformes de streaming** : liste TMDB `/watch/providers/{tv,movie}`
+  (région FR, fusionnée, ordre de priorité TMDB, 40 premières + recherche),
+  cases à cocher + puces des choisies. Stocké dans `localStorage`
+  `season.providers` = `[{id,name,logo}]` ; vide = pas de filtre.
+- Inclus dans l'**export** de sauvegarde (`settings.providers`) et restauré à l'import.
 
 ### Onglet À venir
 - Prochaines sorties d'épisodes des séries suivies, groupées par date (relatif
