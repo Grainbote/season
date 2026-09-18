@@ -200,6 +200,17 @@ chaque retour géré. Avant (jusqu'au 18/09/2026), retour fermait l'appli.
 
 ## Rafraîchissement TMDB
 
+- **Ouverture d'une fiche suivie = instantanée** depuis IndexedDB (depuis le 18/09/2026 ;
+  avant : spinner + attente TMDB + 2ᵉ rendu complet quand les épisodes arrivaient → la
+  page « sautait »). La mise à jour TMDB se fait après, en tâche de fond, puis
+  `draw(true)` redessine **sur place** : position de défilement, saisons ouvertes et
+  blocs « Où regarder » / suggestions conservés ; pas de redessin si elle est en train
+  d'écrire (focus dans un champ). `navSeq` (incrémenté par `go`/`back`) évite qu'un
+  rendu tardif écrase un autre écran. `detailNode` ne fait plus `render()` lui-même.
+- Fiche pas encore suivie : spinner seulement si TMDB met > 150 ms.
+- « Où regarder » : place réservée (squelette) pendant le chargement + cache mémoire
+  `wtwCache` par fiche.
+
 - Métadonnées d'une fiche : re-fetch si en ligne et `metaAt` > 12 h.
 - Épisodes d'une série suivie : re-sync en tâche de fond si en ligne et `epAt` > 12 h
   (l'état `watched` de chaque épisode est préservé).

@@ -50,6 +50,7 @@
 
   // ---- navigation (pile de vues) ---------------------------------------
   let stack = [];
+  let navSeq = 0; // change à chaque changement d'écran (pour ignorer les rendus tardifs)
   function setTab(tab) {
     [...tabbar.children].forEach((b) => b.classList.toggle("is-active", b.dataset.tab === tab));
   }
@@ -59,6 +60,7 @@
     window.scrollTo(0, 0);
   }
   function go(fn, title, { push = true } = {}) {
+    navSeq++;
     if (push) stack.push({ fn, title });
     else stack[stack.length - 1] = { fn, title };
     backBtn.hidden = stack.length <= 1;
@@ -67,6 +69,7 @@
   }
   function back() {
     if (stack.length <= 1) return;
+    navSeq++;
     stack.pop();
     const top = stack[stack.length - 1];
     backBtn.hidden = stack.length <= 1;
@@ -344,59 +347,90 @@
   }
 
   // ---- FICHE --------------------------------------------------------
+  // Une fiche déjà suivie s'affiche tout de suite depuis le téléphone ; la mise à jour
+  // TMDB (infos + épisodes) se fait ensuite en tâche de fond et la fiche est redessinée
+  // sur place, sans rond de chargement ni retour en haut. (Avant : spinner, attente
+  // TMDB, puis 2ᵉ rendu complet → la page « sautait ».)
   async function renderDetail(key, fallbackSearchItem) {
-    render(spinner());
+    const seq = navSeq;
+    const still = () => seq === navSeq; // toujours sur cette fiche ?
     const [type, id] = key.split(":");
     let show = await DB.getShow(key);
     const saved = !!show;
     const online = navigator.onLine;
 
-    // charge / rafraîchit les métadonnées depuis TMDB
-    if (!show || (online && staleMeta(show))) {
+    const fetchMeta = async (base) => {
+      const fresh = type === "tv" ? await TMDB.tv(id) : await TMDB.movie(id);
+      const s = base
+        ? Object.assign(base, fresh, {
+            status: base.status,
+            rating: base.rating,
+            review: base.review,
+            watchedMovie: base.watchedMovie,
+            createdAt: base.createdAt,
+          })
+        : fresh;
+      s.metaAt = Date.now();
+      if (type === "tv") s.totalEpisodes = (s.seasons || []).reduce((n, x) => n + x.count, 0);
+      return s;
+    };
+
+    if (!show) {
+      // pas encore suivi : il faut TMDB avant d'afficher (spinner seulement si c'est long)
+      const spin = setTimeout(() => still() && render(spinner()), 150);
       try {
-        const fresh = type === "tv" ? await TMDB.tv(id) : await TMDB.movie(id);
-        if (show) {
-          Object.assign(show, fresh, {
-            status: show.status,
-            rating: show.rating,
-            review: show.review,
-            watchedMovie: show.watchedMovie,
-            createdAt: show.createdAt,
-          });
-        } else {
-          show = fresh;
-        }
-        show.metaAt = Date.now();
-        if (type === "tv") {
-          show.totalEpisodes = (show.seasons || []).reduce((n, s) => n + s.count, 0);
-        }
-        if (saved) await DB.putShow(show);
+        show = await fetchMeta(null);
       } catch (err) {
-        if (!show && fallbackSearchItem) {
+        if (fallbackSearchItem) {
           const f = fallbackSearchItem;
           show = { key, type, tmdbId: +id, title: f.title, year: f.year,
                    overview: f.overview, poster: f.poster, genres: [], seasons: [] };
-        } else if (!show) {
-          render(el(`<div class="empty">Impossible de charger cette fiche.<br>${
+        } else {
+          clearTimeout(spin);
+          if (still()) render(el(`<div class="empty">Impossible de charger cette fiche.<br>${
             navigator.onLine ? "Vérifie ta clé TMDB." : "Pas de réseau."
           }</div>`));
           return;
         }
       }
+      clearTimeout(spin);
     }
 
-    const episodes = type === "tv" ? await DB.episodesOf(key) : [];
-    const watchedMap = new Map(episodes.map((e) => [`${e.season}:${e.episode}`, e]));
-
-    view.replaceChildren(detailNode(show, saved, watchedMap));
-    view.scrollTo(0, 0);
-
-    // pour une série déjà suivie : rafraîchir les épisodes en tâche de fond
-    if (saved && type === "tv" && online && staleMeta({ metaAt: show.epAt })) {
-      syncEpisodes(show).then((changed) => {
-        if (changed && stack[stack.length - 1]?.title === show.title) renderDetail(key);
+    const draw = async (inPlace) => {
+      const episodes = type === "tv" ? await DB.episodesOf(key) : [];
+      const watchedMap = new Map(episodes.map((e) => [`${e.season}:${e.episode}`, e]));
+      if (!still()) return;
+      const node = detailNode(show, saved, watchedMap);
+      if (!inPlace) { render(node); return; }
+      // redessin sur place : garde la position, les saisons ouvertes et les blocs
+      // déjà chargés (« Où regarder », suggestions) pour qu'ils ne se rechargent pas
+      const y = window.scrollY, vy = view.scrollTop;
+      const open = [...view.querySelectorAll(".season.open .s-name")].map((x) => x.textContent);
+      for (const sel of [".wtw", ".related"]) {
+        const old = view.querySelector(sel), neu = node.querySelector(sel);
+        if (old && neu) neu.replaceWith(old);
+      }
+      node.querySelectorAll(".season").forEach((s) => {
+        if (open.includes(s.querySelector(".s-name")?.textContent)) s.querySelector(".season-head")?.click();
       });
+      view.replaceChildren(node);
+      view.scrollTop = vy;
+      window.scrollTo(0, y);
+    };
+    await draw(false);
+    if (!saved || !online) return;
+
+    // tâche de fond : infos TMDB (> 12 h) puis épisodes d'une série (> 12 h)
+    let changed = false;
+    if (staleMeta(show)) {
+      try { await fetchMeta(show); await DB.putShow(show); changed = true; } catch {}
     }
+    if (type === "tv" && staleMeta({ metaAt: show.epAt })) {
+      if (await syncEpisodes(show)) changed = true;
+    }
+    // pas de redessin pendant qu'elle écrit son avis (le texte en cours serait perdu)
+    const typing = view.contains(document.activeElement) && /^(TEXTAREA|INPUT)$/.test(document.activeElement.tagName);
+    if (changed && still() && !typing) draw(true);
   }
 
   function staleMeta(show) {
@@ -435,7 +469,6 @@
       }
       wrap.append(row);
       wrap.append(relatedSection(show));
-      render(wrap);
       return wrap;
     }
 
@@ -519,19 +552,19 @@
     });
     wrap.append(del);
 
-    render(wrap);
     return wrap;
   }
 
   // ---- « Où regarder » (fiche) --------------------------------------------
+  const wtwCache = new Map(); // « Où regarder » par fiche, le temps de la session
   function whereToWatchSection(show) {
     const box = el('<div class="wtw"></div>');
     if (!navigator.onLine || !TMDB.hasKey()) return box;
-    (async () => {
-      let r;
-      try {
-        r = await TMDB.whereToWatch(show.type, show.tmdbId || show.key.split(":")[1]);
-      } catch { return; }
+    // copie : le rendu annote les plateformes (isMine…), le cache doit rester brut
+    const fill = (raw) => {
+      const r = JSON.parse(JSON.stringify(raw));
+      box.classList.remove("is-loading");
+      box.replaceChildren();
       const mine = new Set(myProviders().map((p) => p.id));
       // ses plateformes d'abord, puis l'ordre TMDB ; sans doublon d'une ligne à l'autre
       const used = new Set();
@@ -574,7 +607,16 @@
       if (r.link) {
         box.append(el(`<a class="wtw-src" href="${esc(r.link)}" target="_blank" rel="noopener">Source : JustWatch ↗</a>`));
       }
-    })();
+    };
+    // déjà vu pendant la session → affichage immédiat, sans décalage
+    const cached = wtwCache.get(show.key);
+    if (cached) { fill(cached); return box; }
+    // sinon on réserve la place pendant le chargement (évite que la page saute)
+    box.classList.add("is-loading");
+    box.append(el('<div class="section-title">Où regarder</div>'), el('<div class="wtw-skel"></div>'));
+    TMDB.whereToWatch(show.type, show.tmdbId || show.key.split(":")[1])
+      .then((r) => { wtwCache.set(show.key, r); fill(r); })
+      .catch(() => { box.classList.remove("is-loading"); box.replaceChildren(); });
     return box;
   }
 
