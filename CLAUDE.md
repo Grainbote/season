@@ -145,6 +145,30 @@ Conversion : `scratchpad/convert.mjs` (script jetable, pas dans le dépôt).
 - **Temps de visionnage des stats = approximatif** pour l'import : `episode_run_time`
   est souvent vide chez TMDB, l'appli retombe alors sur 40 min/épisode.
 
+## Import Letterboxd (fait une fois, le 18/09/2026)
+
+Export `letterboxd-cloborto-2026-09-18-17-49-utc.zip` (Téléchargements) : watched.csv
+(1640), watchlist.csv (910), ratings.csv (1618, demi-étoiles), diary.csv (442 dates
+de visionnage), reviews.csv, likes/films.csv, profile.csv (4 films favoris).
+Scripts jetables (scratchpad, pas dans le dépôt) : `convert-lb.mjs`, `add-series.mjs`,
+`inject.mjs`.
+- **Id TMDB exact** lu sur la page Letterboxd de chaque film (`boxd.it/…` →
+  `data-tmdb-id`), pas de recherche par titre. 2538/2550 reconnus ; les 12 restants
+  étaient des **séries** (Letterboxd ne donne pas d'id TMDB aux séries) → retrouvées
+  par `/search/tv` et ajoutées comme séries (11 « à voir », DJ Mehdi vue, 6 épisodes).
+- Vu → `watchedMovie`, date = dernière « Watched Date » du journal, sinon date
+  d'enregistrement dans watched.csv (⚠ ~1190 films enregistrés en masse en
+  sept. 2023 à son inscription : leur date = celle-là, pas la vraie).
+- Watchlist → « à voir ». Note Letterboxd → `rating` (demi-étoiles gardées).
+  Critiques → avis ; film aimé → « ♥ Aimé sur Letterboxd », favori de profil →
+  « ★ Film favori sur Letterboxd » (comme les favoris TV Time).
+- **Injecté directement dans le téléphone** (DevTools via adb, fusion sans écraser),
+  après sauvegarde complète du téléphone :
+  `Téléchargementsseason-sauvegarde-avant-letterboxd-2026-09-18.json`. Fichier
+  converti gardé : `Téléchargementsseason-import-letterboxd.json` (importable via
+  Stats → Importer). Après import : 2539 films (1640 vus, 899 à voir), 428 séries.
+- Champ `source: "letterboxd"` sur les fiches importées.
+
 ## Modèle de données (IndexedDB `season`)
 
 - `shows`, clé `key` = `tv:<tmdbId>` ou `movie:<tmdbId>` : `type`, `title`, `year`,
