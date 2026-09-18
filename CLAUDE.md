@@ -61,7 +61,21 @@ Le dépôt public ne contient que la coquille de l'appli.
   une série coche tous ses épisodes, sans confirmation puisqu'elle vient de choisir).
 
 ### Fiche
-- Affiche, année, genres, résumé.
+- Affiche, année, résumé. **Genres = pastilles cliquables** (`.genre-tag`) → vue genre.
+
+### Vue genre (`renderGenre`, depuis une pastille de genre)
+- Titre = nom du genre ; segmented **Séries / Films** (ouvert sur le type de la fiche,
+  choix retenu par page dans `genreTab`).
+- Id du genre : `TMDB.genreId(type, nom)` (`/genre/{type}/list` fr-FR, cache session) —
+  les fiches ne stockent que les noms. Autre type : `TMDB.bridgeGenre` (`GENRE_BRIDGE`),
+  sinon même nom de l'autre côté ; sinon « Pas d'équivalent de ce genre côté … »
+  (ex. Romance n'existe pas côté séries chez TMDB).
+- `TMDB.byGenre` → `/discover` **populaires d'abord**, `vote_count.gte=20`, et si
+  plateformes choisies : `with_watch_providers` + `flatrate|free|ads` (pas de location).
+- **Vus / en cours masqués**, « à voir » gardés avec badge. Grille `.poster-grid
+  no-caption` de `recoCard` (respecte « vignettes par ligne »). « Voir plus » charge des
+  pages jusqu'à ~18 nouveaux titres visibles (5 pages max par clic). Cache session
+  `genreCache` → retour depuis une fiche instantané.
 - **Statut** :
   - Film : boutons *À voir* / *Vu*.
   - Série : *À voir* et *Vu* cochent / décochent toute la série (confirmation) ;

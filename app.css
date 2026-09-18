@@ -241,6 +241,8 @@ img { max-width: 100%; }
 }
 .reco-row::-webkit-scrollbar { display: none; }
 .reco-card { flex: 0 0 104px; width: 104px; scroll-snap-align: start; }
+/* mêmes vignettes dans une grille (page genre) : elles remplissent leur colonne */
+.poster-grid .reco-card { flex: none; width: 100%; }
 .badge-list { background: var(--accent); color: var(--on-accent); }
 .prov-logo {
   position: absolute; right: 5px; bottom: 5px;
@@ -359,7 +361,16 @@ img { max-width: 100%; }
 .detail-hero .poster-wrap { width: 118px; flex: none; }
 .detail-hero h2 { font-size: 20px; font-weight: 700; line-height: 1.2; }
 .detail-hero .sub { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
-.detail-hero .genres { font-size: 12px; color: var(--text-dim); margin-top: 8px; }
+.detail-hero .genres { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+/* genres cliquables → page « titres de ce genre » */
+.genre-tag {
+  background: var(--bg-elev); border: 1px solid var(--line); color: var(--text);
+  font: inherit; font-size: 12px; line-height: 1.2;
+  padding: 5px 10px; border-radius: 999px; cursor: pointer;
+}
+.genre-tag:active { background: var(--accent-soft); border-color: var(--accent); }
+.genre-more { display: block; margin: 18px auto 0; }
+.genre-more[hidden] { display: none; }
 
 .overview { font-size: 13.5px; line-height: 1.5; color: #cfd3e2; margin-bottom: 18px; }
 

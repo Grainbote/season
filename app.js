@@ -465,10 +465,15 @@
         <div>
           <h2>${esc(show.title)}</h2>
           <div class="sub">${esc(sub)}</div>
-          ${show.genres && show.genres.length ? `<div class="genres">${esc(show.genres.join(" · "))}</div>` : ""}
+          ${show.genres && show.genres.length ? `<div class="genres">${show.genres.map((g) =>
+            `<button class="genre-tag" data-g="${esc(g)}">${esc(g)}</button>`).join("")}</div>` : ""}
         </div>
       </div>`
     ));
+    // genre → tous les titres de ce genre pas encore vus, sur ses plateformes
+    wrap.querySelectorAll(".genre-tag").forEach((b) =>
+      b.addEventListener("click", () => go(() => renderGenre(show.type, b.dataset.g), b.dataset.g))
+    );
 
     if (show.overview) wrap.append(el(`<p class="overview">${esc(show.overview)}</p>`));
     wrap.append(whereToWatchSection(show));
@@ -688,7 +693,7 @@
     // logo de la (1ʳᵉ) plateforme où le titre est dispo, parmi les siennes
     const p = (x.on || []).map((id) => provById.get(id)).find((q) => q && q.logo);
     const card = el(
-      `<button class="poster-card reco-card">
+      `<button class="poster-card reco-card" aria-label="${esc(x.title)}">
         <div class="poster-wrap">
           ${status ? '<span class="badge-type badge-list">À voir</span>' : ""}
           <img loading="lazy" src="${TMDB.poster(x.poster, "w185")}" alt="">
@@ -700,6 +705,106 @@
     );
     card.addEventListener("click", () => go(() => renderDetail(`${x.type}:${x.tmdbId}`, x), x.title));
     return card;
+  }
+
+  // ---- GENRE : titres d'un genre pas encore vus, sur ses plateformes ------------
+  const genreCache = new Map(); // "type|ids|plateformes" → { items, page, totalPages }
+  const genreTab = new Map(); // onglet Séries/Films choisi, par page de genre
+  async function renderGenre(fromType, name) {
+    const seq = navSeq;
+    const still = () => seq === navSeq;
+    const viewKey = fromType + "|" + name;
+    const wrap = el('<div></div>');
+    if (!navigator.onLine || !TMDB.hasKey()) {
+      render(el(`<div class="empty">${navigator.onLine ? "Clé TMDB manquante." : "Pas de réseau."}</div>`));
+      return;
+    }
+    const seg = el('<div class="segmented"></div>');
+    const note = el('<div class="reco-note" style="margin:-6px 0 14px"></div>');
+    const body = el('<div></div>');
+    wrap.append(seg, note, body);
+    render(wrap);
+
+    const provs = myProviders();
+    note.innerHTML = provs.length
+      ? `Pas encore vus, sur tes plateformes (${esc(provs.map((p) => p.name).join(", "))}). `
+      : "Pas encore vus, toutes plateformes confondues. ";
+    const lnk = el(`<button class="link-btn">${provs.length ? "Modifier" : "Choisir mes plateformes"}</button>`);
+    lnk.addEventListener("click", () => go(renderReglages, "Réglages"));
+    note.append(lnk);
+
+    // ce qu'elle a déjà : vu / en cours = masqué ; à voir = gardé avec badge
+    const mine = new Map((await DB.allShows()).map((s) => [s.key, s.status]));
+    const hidden = (x) => ["vu", "en_cours"].includes(mine.get(`${x.type}:${x.tmdbId}`));
+
+    // id du genre pour chaque type (l'autre type passe par l'équivalence séries ↔ films)
+    let srcId = null;
+    try { srcId = await TMDB.genreId(fromType, name); } catch {}
+    const other = fromType === "tv" ? "movie" : "tv";
+    const idsFor = { [fromType]: srcId ? [srcId] : [], [other]: [] };
+    if (srcId) idsFor[other] = TMDB.bridgeGenre(fromType, srcId);
+    if (!idsFor[other].length) {
+      // même nom de genre de l'autre côté (ex. « Drame », « Comédie »)
+      try { const id = await TMDB.genreId(other, name); if (id) idsFor[other] = [id]; } catch {}
+    }
+    if (!still()) return;
+
+    const show = (type) => {
+      genreTab.set(viewKey, type);
+      seg.querySelectorAll("button").forEach((b) => b.classList.toggle("is-active", b.dataset.t === type));
+      body.replaceChildren();
+      const ids = idsFor[type];
+      if (!ids.length) {
+        body.append(el(`<div class="empty">Pas d'équivalent de ce genre côté ${type === "tv" ? "séries" : "films"}.</div>`));
+        return;
+      }
+      const ck = `${type}|${ids.join(",")}|${provs.map((p) => p.id).join(",")}`;
+      if (!genreCache.has(ck)) genreCache.set(ck, { items: [], page: 0, totalPages: 1 });
+      const st = genreCache.get(ck);
+      const grid = el('<div class="poster-grid no-caption"></div>');
+      const more = el('<button class="btn-primary genre-more">Voir plus</button>');
+      body.append(grid, more);
+      let shown = 0;
+      const paint = () => {
+        const vis = st.items.filter((x) => !hidden(x));
+        vis.slice(shown).forEach((x) => grid.append(recoCard(x, mine.get(`${x.type}:${x.tmdbId}`))));
+        shown = vis.length;
+        more.hidden = st.page >= st.totalPages;
+        if (!shown && more.hidden) body.replaceChildren(el('<div class="empty">Aucun titre de ce genre à te proposer.</div>'));
+      };
+      // charge des pages jusqu'à ~18 nouveaux titres visibles (les vus sont filtrés)
+      const load = async () => {
+        more.disabled = true;
+        more.textContent = "Chargement…";
+        const before = st.items.filter((x) => !hidden(x)).length;
+        try {
+          for (let n = 0; n < 5 && st.page < st.totalPages; n++) {
+            const r = await TMDB.byGenre(type, ids, { prov: provs.map((p) => p.id), page: st.page + 1 });
+            st.page++;
+            st.totalPages = r.totalPages;
+            const have = new Set(st.items.map((x) => x.tmdbId));
+            st.items.push(...r.results.filter((x) => !have.has(x.tmdbId)));
+            if (st.items.filter((x) => !hidden(x)).length - before >= 18) break;
+          }
+        } catch {
+          toast("Chargement impossible");
+        }
+        if (!still() || genreTab.get(viewKey) !== type) return;
+        more.disabled = false;
+        more.textContent = "Voir plus";
+        paint();
+      };
+      more.addEventListener("click", load);
+      if (st.items.length) paint(); // déjà chargé (retour depuis une fiche)
+      else load();
+    };
+
+    for (const [t, label] of [["tv", "Séries"], ["movie", "Films"]]) {
+      const b = el(`<button data-t="${t}">${label}</button>`);
+      b.addEventListener("click", () => show(t));
+      seg.append(b);
+    }
+    show(genreTab.get(viewKey) || fromType);
   }
 
   // ---- RÉGLAGES -----------------------------------------------------
