@@ -20,7 +20,7 @@ HTML/CSS/JS pur, **aucun framework, aucun outil de build** (comme ses autres pro
 Le dépôt public ne contient que la coquille de l'appli.
 
 - `index.html` — structure, barre du haut (⚙ Réglages), 5 onglets (Séries, À venir, Films, Recherche, Stats)
-- `app.css` — thème sombre, mobile d'abord (max 560 px, safe-area iOS/Android)
+- `app.css` — thème sombre, mobile d'abord (max 560 px, safe-area iOS/Android) ; accent **orange** `#ff8a3d` (texte `--on-accent` foncé dessus), `--warn` rouge — depuis le 18/09/2026 (avant : bleu-violet). L'icône de l'appli est restée bleu-violet (`outils/creer-icones.ps1`)
 - `app.js` — toute la logique (navigation par pile de vues, rendu des écrans)
 - `db.js` — couche IndexedDB (stores `shows`, `episodes`)
 - `tmdb.js` — accès à l'API TMDB (recherche, détails, épisodes)

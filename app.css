@@ -6,10 +6,11 @@
   --line: #2e3140;
   --text: #eef0f6;
   --text-dim: #9aa0b4;
-  --accent: #6c8cff;
-  --accent-soft: #6c8cff22;
+  --accent: #ff8a3d; /* orange (avant le 18/09/2026 : bleu-violet #6c8cff) */
+  --accent-soft: #ff8a3d22;
+  --on-accent: #1d1206; /* texte sur fond orange : foncé, le blanc serait peu lisible */
   --good: #4bd08b;
-  --warn: #ffb454;
+  --warn: #ff6b6b; /* rouge (l'ancien orange se confondait avec l'accent) */
   --star: #ffc93c;
   --radius: 14px;
   --tabbar-h: 62px;
@@ -132,7 +133,7 @@ img { max-width: 100%; }
 }
 .segmented button.is-active {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 .count-pill {
   font-size: 11px;
@@ -240,7 +241,7 @@ img { max-width: 100%; }
 }
 .reco-row::-webkit-scrollbar { display: none; }
 .reco-card { flex: 0 0 104px; width: 104px; scroll-snap-align: start; }
-.badge-list { background: var(--accent); }
+.badge-list { background: var(--accent); color: var(--on-accent); }
 .prov-logo {
   position: absolute; right: 5px; bottom: 5px;
   width: 24px !important; height: 24px !important;
@@ -374,7 +375,7 @@ img { max-width: 100%; }
   border-radius: 10px;
   cursor: pointer;
 }
-.status-row button.is-active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.status-row button.is-active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 
 .section-title {
   font-size: 13px;
@@ -493,7 +494,7 @@ textarea.review:focus { outline: none; border-color: var(--accent); }
 .btn-primary {
   display: inline-block;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border: none;
   border-radius: 11px;
   font-size: 14px;
