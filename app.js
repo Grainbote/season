@@ -425,18 +425,15 @@
     wrap.append(whereToWatchSection(show));
 
     if (!saved) {
-      const addBtn = el(`<button class="btn-primary">＋ Ajouter à mes listes</button>`);
-      addBtn.addEventListener("click", async () => {
-        show.createdAt = Date.now();
-        show.status = "a_voir";
-        show.rating = 0;
-        show.review = "";
-        await DB.putShow(show);
-        if (show.type === "tv") await syncEpisodes(show);
-        toast("Ajouté");
-        go(() => renderDetail(show.key), show.title, { push: false });
-      });
-      wrap.append(addBtn);
+      // pas encore suivi : choisir « À voir » ou « Vu » l'ajoute directement
+      wrap.append(el('<div class="section-title">Statut</div>'));
+      const row = el('<div class="status-row"></div>');
+      for (const k of ["a_voir", "vu"]) {
+        const b = el(`<button data-k="${k}">${STATUS[k]}</button>`);
+        b.addEventListener("click", () => addWithStatus(show, k, row));
+        row.append(b);
+      }
+      wrap.append(row);
       wrap.append(relatedSection(show));
       render(wrap);
       return wrap;
@@ -830,6 +827,29 @@
       }
     }
     if (all.length) await DB.putEpisodes(all);
+  }
+
+  // ajout d'un titre pas encore suivi, directement avec son statut
+  async function addWithStatus(show, k, row) {
+    row.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+    row.querySelector(`[data-k="${k}"]`).classList.add("is-active");
+    show.createdAt = Date.now();
+    show.status = "a_voir";
+    show.rating = 0;
+    show.review = "";
+    await DB.putShow(show);
+    if (show.type === "tv") await syncEpisodes(show);
+    if (k === "vu") {
+      if (show.type === "movie") {
+        show.watchedMovie = true;
+        show.watchedAt = Date.now();
+      } else {
+        await setAllEpisodes(show, true);
+      }
+    }
+    await recomputeAndSave(show);
+    toast(k === "vu" ? "Ajouté aux vus" : "Ajouté à voir");
+    go(() => renderDetail(show.key), show.title, { push: false });
   }
 
   function setStatusManually(show, k) {

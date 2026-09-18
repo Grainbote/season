@@ -53,8 +53,10 @@ Le dépôt public ne contient que la coquille de l'appli.
 
 ### Onglet Recherche
 - Recherche TMDB `search/multi` (séries + films), triée par popularité, en français.
-- Résultat → fiche. Bouton **Ajouter à mes listes** (récupère alors tous les
-  épisodes de la série depuis TMDB).
+- Résultat → fiche. Plus de bouton « Ajouter à mes listes » (retiré le 18/09/2026) :
+  une fiche **pas encore suivie** montre directement **À voir / Vu** ; un tap ajoute le
+  titre avec ce statut (`addWithStatus` : récupère les épisodes d'une série, « Vu » sur
+  une série coche tous ses épisodes, sans confirmation puisqu'elle vient de choisir).
 
 ### Fiche
 - Affiche, année, genres, résumé.
