@@ -19,7 +19,7 @@ téléphone** (IndexedDB) — rien n'est envoyé nulle part.
 HTML/CSS/JS pur, **aucun framework, aucun outil de build** (comme ses autres projets).
 Le dépôt public ne contient que la coquille de l'appli.
 
-- `index.html` — structure, barre du haut, 3 onglets, barre du bas
+- `index.html` — structure, barre du haut (⚙ Réglages), 5 onglets (Séries, Films, À venir, Recherche, Stats)
 - `app.css` — thème sombre, mobile d'abord (max 560 px, safe-area iOS/Android)
 - `app.js` — toute la logique (navigation par pile de vues, rendu des écrans)
 - `db.js` — couche IndexedDB (stores `shows`, `episodes`)
@@ -34,8 +34,13 @@ Le dépôt public ne contient que la coquille de l'appli.
 
 ## Fonctionnalités
 
-### Onglet Listes
-- Segmented **À voir / En cours / Vu** avec compteurs.
+### Onglets Séries et Films (listes)
+- Depuis le 18/09/2026, l'ancien onglet « Listes » est scindé (son choix) :
+  **Séries** (`data-tab="listes"`, `renderSeries`) ne montre que les séries,
+  **Films** (`data-tab="films"`, `renderFilms`) que les films. Même `renderListes`,
+  paramétré par `listesKind` ; filtre actif retenu par type (`listesFilters`).
+- Segmented **À voir / En cours / Vu** avec compteurs (Films : **À voir / Vu**
+  seulement ; un film resté « en cours » compte comme « à voir »).
 - **Tri** (menu déroulant, choix retenu dans `localStorage` `season.sort`) :
   *Vu récemment* (défaut — date du dernier épisode coché, ou date du film ;
   calculée en parcourant tous les épisodes), *Ajout récent* (`createdAt`),

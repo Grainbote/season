@@ -87,7 +87,8 @@
     const b = e.target.closest(".tab");
     if (!b) return;
     const tab = b.dataset.tab;
-    if (tab === "listes") resetTo(renderListes, "Listes", "listes");
+    if (tab === "listes") resetTo(renderSeries, "Séries", "listes");
+    if (tab === "films") resetTo(renderFilms, "Films", "films");
     if (tab === "avenir") resetTo(renderAVenir, "À venir", "avenir");
     if (tab === "recherche") resetTo(renderRecherche, "Recherche", "recherche");
     if (tab === "stats") resetTo(renderStats, "Stats", "stats");
@@ -121,8 +122,11 @@
     return (epMax && epMax.get(show.key)) || show.lastWatchedAt || show.updatedAt || 0;
   }
 
-  // ---- LISTES ----------------------------------------------------------
-  let listesFilter = "en_cours";
+  // ---- LISTES : onglet Séries et onglet Films ------------------------------
+  let listesKind = "tv"; // "tv" (onglet Séries) ou "movie" (onglet Films)
+  const listesFilters = { tv: "en_cours", movie: "a_voir" };
+  const renderSeries = () => { listesKind = "tv"; return renderListes(); };
+  const renderFilms = () => { listesKind = "movie"; return renderListes(); };
   const SORTS = {
     vu: "Vu récemment",
     ajout: "Ajout récent",
@@ -131,12 +135,13 @@
   let listesSort = localStorage.getItem("season.sort") || "vu";
   async function renderListes() {
     render(spinner());
-    const shows = await DB.allShows();
-    if (!TMDB.hasKey()) {
-      // avertissement clé manquante
-    }
+    const isMovie = listesKind === "movie";
+    // un film n'a pas d'état « en cours » : s'il en traîne un, il compte comme « à voir »
+    const statusOf = (s) => (isMovie && s.status === "en_cours" ? "a_voir" : s.status);
+    const shows = (await DB.allShows()).filter((s) => s.type === listesKind);
+    const listesFilter = listesFilters[listesKind];
     const counts = { a_voir: 0, en_cours: 0, vu: 0 };
-    shows.forEach((s) => { counts[s.status] = (counts[s.status] || 0) + 1; });
+    shows.forEach((s) => { counts[statusOf(s)] = (counts[statusOf(s)] || 0) + 1; });
 
     const wrap = el('<div></div>');
     if (!TMDB.hasKey()) {
@@ -146,12 +151,12 @@
     }
 
     const seg = el('<div class="segmented"></div>');
-    for (const k of ["a_voir", "en_cours", "vu"]) {
+    for (const k of isMovie ? ["a_voir", "vu"] : ["a_voir", "en_cours", "vu"]) {
       const b = el(
         `<button data-k="${k}">${STATUS[k]}<span class="count-pill">${counts[k] || 0}</span></button>`
       );
       if (k === listesFilter) b.classList.add("is-active");
-      b.addEventListener("click", () => { listesFilter = k; renderListes(); });
+      b.addEventListener("click", () => { listesFilters[listesKind] = k; renderListes(); });
       seg.append(b);
     }
     wrap.append(seg);
@@ -188,12 +193,12 @@
       ajout: (a, b) => (b.createdAt || 0) - (a.createdAt || 0),
       titre: (a, b) => (a.title || "").localeCompare(b.title || "", "fr", { sensitivity: "base" }),
     };
-    const inList = shows.filter((s) => s.status === listesFilter).sort(sorters[listesSort] || sorters.vu);
+    const inList = shows.filter((s) => statusOf(s) === listesFilter).sort(sorters[listesSort] || sorters.vu);
 
     if (!inList.length) {
       wrap.append(el(
         `<div class="empty"><span class="big">▦</span>Rien dans « ${STATUS[listesFilter]} ».<br>` +
-        `Utilise l'onglet Recherche pour ajouter une série ou un film.` +
+        `Utilise l'onglet Recherche pour ajouter ${isMovie ? "un film" : "une série"}.` +
         `</div>`
       ));
     } else {
@@ -886,7 +891,7 @@
         await DB.importAll(data);
         if (data.settings && Array.isArray(data.settings.providers)) setMyProviders(data.settings.providers);
         toast(`${data.shows.length} titres importés`);
-        resetTo(renderListes, "Listes", "listes");
+        resetTo(renderSeries, "Séries", "listes");
       } catch {
         toast("Fichier illisible");
       }
@@ -1070,5 +1075,5 @@
   }
   window.addEventListener("online", () => toast("De retour en ligne"));
 
-  resetTo(renderListes, "Listes", "listes");
+  resetTo(renderSeries, "Séries", "listes");
 })();
