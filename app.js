@@ -1069,8 +1069,23 @@
 
   // ---- service worker + démarrage ----------------------------------
   if ("serviceWorker" in navigator) {
+    // Nouvelle version publiée : le nouveau SW prend la main (skipWaiting + claim)
+    // → on recharge aussitôt pour l'afficher, sans attendre une 2ᵉ ouverture.
+    // (Pas au tout 1ᵉʳ lancement : il n'y avait alors aucun SW aux commandes.)
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (!hadController || reloaded) return;
+      reloaded = true;
+      location.reload();
+    });
     window.addEventListener("load", () =>
-      navigator.serviceWorker.register("sw.js").catch(() => {})
+      navigator.serviceWorker.register("sw.js").then((reg) => {
+        // Android garde l'appli en mémoire : revérifie quand on revient dessus
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") reg.update().catch(() => {});
+        });
+      }).catch(() => {})
     );
   }
   window.addEventListener("online", () => toast("De retour en ligne"));
