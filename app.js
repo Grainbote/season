@@ -477,7 +477,8 @@
 
     // tâche de fond : infos TMDB (> 12 h) puis épisodes d'une série (> 12 h)
     let changed = false;
-    if (staleMeta(show)) {
+    // (sans mots-clés = enregistrée avant les thèmes : on les récupère tout de suite)
+    if (staleMeta(show) || !Array.isArray(show.keywordIds)) {
       try { await fetchMeta(show); await DB.putShow(show); changed = true; } catch {}
     }
     if (type === "tv" && staleMeta({ metaAt: show.epAt })) {
@@ -505,15 +506,49 @@
         <div>
           <h2>${esc(show.title)}</h2>
           <div class="sub">${esc(sub)}</div>
-          ${show.genres && show.genres.length ? `<div class="genres">${show.genres.map((g) =>
-            `<button class="genre-tag" data-g="${esc(g)}">${esc(g)}</button>`).join("")}</div>` : ""}
+          <div class="genres"></div>
         </div>
       </div>`
     ));
-    // genre → tous les titres de ce genre pas encore vus, sur ses plateformes
-    wrap.querySelectorAll(".genre-tag").forEach((b) =>
-      b.addEventListener("click", () => go(() => renderGenre(show.type, b.dataset.g), b.dataset.g))
-    );
+    // thèmes (themes.js) → page des titres de ce thème pas encore vus, sur ses plateformes ;
+    // fiche suivie : ✎ pour corriger à la main (ajouts / retraits prioritaires sur l'auto)
+    const tagsBox = wrap.querySelector(".genres");
+    const editor = el('<div class="theme-editor" hidden></div>');
+    const drawTags = () => {
+      tagsBox.replaceChildren(...THEMES.themesOf(show).map((t) => {
+        const b = el(`<button class="genre-tag">${esc(t.label)}</button>`);
+        b.addEventListener("click", () => go(() => renderTheme(show.type, t.id), t.label));
+        return b;
+      }));
+      if (saved) {
+        const ed = el(`<button class="genre-tag tag-edit" aria-label="Modifier les thèmes">✎</button>`);
+        ed.addEventListener("click", () => { editor.hidden = !editor.hidden; if (!editor.hidden) drawEditor(); });
+        tagsBox.append(ed);
+      }
+    };
+    const drawEditor = () => {
+      const auto = new Set(THEMES.autoThemes(show));
+      const on = new Set(THEMES.themesOf(show).map((t) => t.id));
+      editor.replaceChildren(el('<div class="section-title">Thèmes de ce titre</div>'));
+      const box = el('<div class="theme-pick"></div>');
+      for (const t of THEMES.list) {
+        const b = el(`<button class="genre-tag${on.has(t.id) ? " is-on" : ""}">${t.parent ? "· " : ""}${esc(t.label)}</button>`);
+        b.addEventListener("click", async () => {
+          const add = new Set(show.tagsAdd || []), rem = new Set(show.tagsRemove || []);
+          if (on.has(t.id)) { add.delete(t.id); if (auto.has(t.id)) rem.add(t.id); }
+          else { rem.delete(t.id); if (!auto.has(t.id)) add.add(t.id); }
+          show.tagsAdd = [...add];
+          show.tagsRemove = [...rem];
+          await DB.putShow(show);
+          drawTags();
+          drawEditor();
+        });
+        box.append(b);
+      }
+      editor.append(box, el('<div class="poster-sub" style="margin-top:6px">Tes choix priment sur le classement automatique.</div>'));
+    };
+    drawTags();
+    wrap.append(editor);
 
     if (show.overview) wrap.append(el(`<p class="overview">${esc(show.overview)}</p>`));
     wrap.append(whereToWatchSection(show));
@@ -747,22 +782,41 @@
     return card;
   }
 
-  // ---- GENRE : titres d'un genre pas encore vus, sur ses plateformes ------------
-  const genreCache = new Map(); // "type|ids|plateformes" → { items, page, totalPages }
-  const genreTab = new Map(); // onglet Séries/Films choisi, par page de genre
-  async function renderGenre(fromType, name) {
+  // ---- THÈME : titres d'un thème (themes.js) pas encore vus, sur ses plateformes ----
+  const themeCache = new Map(); // "type|thème|plateformes" → { items, sources }
+  const themeTab = new Map(); // onglet Séries/Films choisi, par page de thème
+  async function renderTheme(fromType, themeId) {
+    const theme = THEMES.get(themeId);
     const seq = navSeq;
     const still = () => seq === navSeq;
-    const viewKey = fromType + "|" + name;
-    const wrap = el('<div></div>');
+    if (!theme) { render(el('<div class="empty">Thème inconnu.</div>')); return; }
     if (!navigator.onLine || !TMDB.hasKey()) {
       render(el(`<div class="empty">${navigator.onLine ? "Clé TMDB manquante." : "Pas de réseau."}</div>`));
       return;
     }
+    const viewKey = fromType + "|" + themeId;
+    const wrap = el('<div></div>');
     const seg = el('<div class="segmented"></div>');
-    const note = el('<div class="reco-note" style="margin:-6px 0 14px"></div>');
+    const note = el('<div class="reco-note" style="margin:-6px 0 12px"></div>');
     const body = el('<div></div>');
-    wrap.append(seg, note, body);
+    wrap.append(seg);
+
+    // affiner / élargir, comme les listes Letterboxd : sous-thèmes d'un grand thème,
+    // ou retour au grand thème depuis un sous-thème
+    const kids = THEMES.children(themeId);
+    const parent = theme.parent && THEMES.get(theme.parent);
+    if (kids.length || parent) {
+      const row = el('<div class="theme-subs"></div>');
+      const chips = parent ? [parent, ...THEMES.children(parent.id).filter((t) => t.id !== themeId)] : kids;
+      chips.forEach((t, i) => {
+        const b = el(`<button class="genre-tag${parent && i === 0 ? " is-parent" : ""}">${
+          parent && i === 0 ? "↑ Tout " : ""}${esc(t.label)}</button>`);
+        b.addEventListener("click", () => go(() => renderTheme(fromType, t.id), t.label));
+        row.append(b);
+      });
+      wrap.append(row);
+    }
+    wrap.append(note, body);
     render(wrap);
 
     const provs = myProviders();
@@ -773,78 +827,96 @@
     lnk.addEventListener("click", () => go(renderReglages, "Réglages"));
     note.append(lnk);
 
-    // ce qu'elle a déjà : vu / en cours = masqué ; à voir = gardé avec badge
-    const mine = new Map((await DB.allShows()).map((s) => [s.key, s.status]));
-    const hidden = (x) => ["vu", "en_cours"].includes(mine.get(`${x.type}:${x.tmdbId}`));
-
-    // id du genre pour chaque type (l'autre type passe par l'équivalence séries ↔ films)
-    let srcId = null;
-    try { srcId = await TMDB.genreId(fromType, name); } catch {}
-    const other = fromType === "tv" ? "movie" : "tv";
-    const idsFor = { [fromType]: srcId ? [srcId] : [], [other]: [] };
-    if (srcId) idsFor[other] = TMDB.bridgeGenre(fromType, srcId);
-    if (!idsFor[other].length) {
-      // même nom de genre de l'autre côté (ex. « Drame », « Comédie »)
-      try { const id = await TMDB.genreId(other, name); if (id) idsFor[other] = [id]; } catch {}
-    }
+    // ce qu'elle a déjà : vu / en cours = masqué ; à voir = en tête, avec badge ;
+    // thème retiré à la main d'un titre = ce titre n'apparaît pas ici
+    const all = await DB.allShows();
     if (!still()) return;
+    const byKey = new Map(all.map((s) => [s.key, s]));
+    const keyOf = (x) => `${x.type}:${x.tmdbId}`;
+    const hidden = (x) => {
+      const s = byKey.get(keyOf(x));
+      return !!s && (s.status === "vu" || s.status === "en_cours" || (s.tagsRemove || []).includes(themeId));
+    };
 
-    const show = (type) => {
-      genreTab.set(viewKey, type);
+    const showType = (type) => {
+      themeTab.set(viewKey, type);
       seg.querySelectorAll("button").forEach((b) => b.classList.toggle("is-active", b.dataset.t === type));
       body.replaceChildren();
-      const ids = idsFor[type];
-      if (!ids.length) {
-        body.append(el(`<div class="empty">Pas d'équivalent de ce genre côté ${type === "tv" ? "séries" : "films"}.</div>`));
+      const sources = THEMES.findFor(theme, type);
+      // ses « à voir » de ce thème (auto ou ajouté à la main), en premier
+      const mineFirst = all
+        .filter((s) => s.type === type && s.status === "a_voir" && s.poster &&
+          THEMES.themesOf(s).some((t) => t.id === themeId))
+        .map((s) => ({ type: s.type, tmdbId: s.tmdbId, title: s.title, year: s.year, poster: s.poster }));
+      if (!sources.length && !mineFirst.length) {
+        body.append(el(`<div class="empty">Rien de ce thème côté ${type === "tv" ? "séries" : "films"}.</div>`));
         return;
       }
-      const ck = `${type}|${ids.join(",")}|${provs.map((p) => p.id).join(",")}`;
-      if (!genreCache.has(ck)) genreCache.set(ck, { items: [], page: 0, totalPages: 1 });
-      const st = genreCache.get(ck);
+      const ck = `${type}|${themeId}|${provs.map((p) => p.id).join(",")}`;
+      if (!themeCache.has(ck)) {
+        themeCache.set(ck, { items: [], sources: sources.map((c) => ({ c, page: 0, total: 1 })) });
+      }
+      const st = themeCache.get(ck);
       const grid = el('<div class="poster-grid no-caption"></div>');
       const more = el('<button class="btn-primary genre-more">Voir plus</button>');
       body.append(grid, more);
-      let shown = 0;
+      const left = () => st.sources.some((s) => s.page < s.total);
+
+      let shownKeys = new Set();
       const paint = () => {
-        const vis = st.items.filter((x) => !hidden(x));
-        vis.slice(shown).forEach((x) => grid.append(recoCard(x, mine.get(`${x.type}:${x.tmdbId}`))));
-        shown = vis.length;
-        more.hidden = st.page >= st.totalPages;
-        if (!shown && more.hidden) body.replaceChildren(el('<div class="empty">Aucun titre de ce genre à te proposer.</div>'));
+        const vis = [...mineFirst, ...st.items.filter((x) => !hidden(x))];
+        for (const x of vis) {
+          const k = keyOf(x);
+          if (shownKeys.has(String(k))) continue;
+          shownKeys.add(String(k));
+          grid.append(recoCard(x, byKey.get(k) ? byKey.get(k).status : null));
+        }
+        more.hidden = !left();
+        if (!shownKeys.size && more.hidden) {
+          body.replaceChildren(el('<div class="empty">Aucun titre de ce thème à te proposer.</div>'));
+        }
       };
-      // charge des pages jusqu'à ~18 nouveaux titres visibles (les vus sont filtrés)
+      // une « page » = la page suivante de chaque critère (genres, mots-clés), fusionnées
+      // par popularité ; on enchaîne jusqu'à ~18 nouveaux titres visibles
       const load = async () => {
         more.disabled = true;
         more.textContent = "Chargement…";
-        const before = st.items.filter((x) => !hidden(x)).length;
+        const visCount = () => st.items.filter((x) => !hidden(x)).length;
+        const before = visCount();
         try {
-          for (let n = 0; n < 5 && st.page < st.totalPages; n++) {
-            const r = await TMDB.byGenre(type, ids, { prov: provs.map((p) => p.id), page: st.page + 1 });
-            st.page++;
-            st.totalPages = r.totalPages;
+          for (let n = 0; n < 5 && left(); n++) {
+            const got = await Promise.all(st.sources.filter((s) => s.page < s.total).map(async (s) => {
+              const r = await TMDB.discoverPage(type, s.c, { prov: provs.map((p) => p.id), page: s.page + 1 });
+              s.page++;
+              s.total = r.totalPages;
+              return r.results;
+            }));
             const have = new Set(st.items.map((x) => x.tmdbId));
-            st.items.push(...r.results.filter((x) => !have.has(x.tmdbId)));
-            if (st.items.filter((x) => !hidden(x)).length - before >= 18) break;
+            const batch = got.flat()
+              .filter((x) => !have.has(x.tmdbId) && have.add(x.tmdbId))
+              .sort((a, b) => b.popularity - a.popularity);
+            st.items.push(...batch);
+            if (visCount() - before >= 18) break;
           }
         } catch {
           toast("Chargement impossible");
         }
-        if (!still() || genreTab.get(viewKey) !== type) return;
+        if (!still() || themeTab.get(viewKey) !== type) return;
         more.disabled = false;
         more.textContent = "Voir plus";
         paint();
       };
       more.addEventListener("click", load);
-      if (st.items.length) paint(); // déjà chargé (retour depuis une fiche)
-      else load();
+      paint(); // ses « à voir » tout de suite
+      if (!st.items.length && left()) load();
     };
 
     for (const [t, label] of [["tv", "Séries"], ["movie", "Films"]]) {
       const b = el(`<button data-t="${t}">${label}</button>`);
-      b.addEventListener("click", () => show(t));
+      b.addEventListener("click", () => showType(t));
       seg.append(b);
     }
-    show(genreTab.get(viewKey) || fromType);
+    showType(themeTab.get(viewKey) || fromType);
   }
 
   // ---- RÉGLAGES -----------------------------------------------------

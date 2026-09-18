@@ -28,8 +28,6 @@ window.TMDB = (() => {
   Object.assign(GENRE_BRIDGE.tv, { 10759: [28], 10765: [878], 10768: [10752], 10762: [10751] });
   Object.assign(GENRE_BRIDGE.movie, { 28: [10759], 12: [10759], 878: [10765], 14: [10765], 10752: [10768], 53: [9648] });
 
-  const genreLists = {}; // type → Promise<Map nom (minuscules) → id>, le temps de la session
-
   const poster = (p, size = "w342") => (p ? `${IMG}/${size}${p}` : null);
   const still = (p) => (p ? `${IMG}/w300${p}` : null);
 
@@ -39,26 +37,14 @@ window.TMDB = (() => {
     still,
     logo: (p) => (p ? `${IMG}/w92${p}` : null),
 
-    // id TMDB d'un genre à partir de son nom (les fiches ne stockent que les noms)
-    async genreId(type, name) {
-      if (!genreLists[type]) {
-        genreLists[type] = call(`/genre/${type}/list`)
-          .then((d) => new Map((d.genres || []).map((g) => [g.name.toLowerCase(), g.id])))
-          .catch((e) => { delete genreLists[type]; throw e; });
-      }
-      return (await genreLists[type]).get(String(name).toLowerCase()) || null;
-    },
-
-    // équivalent(s) d'un genre dans l'autre type (séries ↔ films) ; [] si aucun
-    bridgeGenre(fromType, id) {
-      return GENRE_BRIDGE[fromType][id] || [];
-    },
-
-    // titres d'un genre, les plus populaires d'abord ; `prov` = ne garder que ce qui est
-    // en abonnement / gratuit sur ces plateformes (pas de location / achat)
-    async byGenre(type, ids, { prov = [], page = 1 } = {}) {
+    // une page de titres d'un thème (themes.js), les plus populaires d'abord :
+    // `genres` OU `keywords` (une requête par critère, fusionnées côté appli) ;
+    // `prov` = seulement l'abonnement / gratuit sur ces plateformes (pas de location)
+    async discoverPage(type, { genres = [], keywords = [], without = [] }, { prov = [], page = 1 } = {}) {
       const d = await call(`/discover/${type}`, {
-        with_genres: ids.join("|"),
+        ...(genres.length ? { with_genres: genres.join("|") } : {}),
+        ...(keywords.length ? { with_keywords: keywords.join("|") } : {}),
+        ...(without.length ? { without_genres: without.join(",") } : {}),
         sort_by: "popularity.desc",
         "vote_count.gte": "20",
         include_adult: "false",
@@ -77,6 +63,7 @@ window.TMDB = (() => {
           year: (x.release_date || x.first_air_date || "").slice(0, 4),
           overview: x.overview,
           poster: x.poster_path,
+          popularity: x.popularity || 0,
         })),
       };
     },
@@ -98,7 +85,7 @@ window.TMDB = (() => {
     },
 
     async movie(id) {
-      const d = await call(`/movie/${id}`);
+      const d = await call(`/movie/${id}`, { append_to_response: "keywords" });
       return {
         key: "movie:" + id,
         type: "movie",
@@ -108,12 +95,14 @@ window.TMDB = (() => {
         overview: d.overview,
         poster: d.poster_path,
         genres: (d.genres || []).map((g) => g.name),
+        genreIds: (d.genres || []).map((g) => g.id),
+        keywordIds: ((d.keywords || {}).keywords || []).map((k) => k.id), // → thèmes (themes.js)
         runtime: d.runtime || 0,
       };
     },
 
     async tv(id) {
-      const d = await call(`/tv/${id}`);
+      const d = await call(`/tv/${id}`, { append_to_response: "keywords" });
       return {
         key: "tv:" + id,
         type: "tv",
@@ -123,6 +112,8 @@ window.TMDB = (() => {
         overview: d.overview,
         poster: d.poster_path,
         genres: (d.genres || []).map((g) => g.name),
+        genreIds: (d.genres || []).map((g) => g.id),
+        keywordIds: ((d.keywords || {}).results || []).map((k) => k.id), // → thèmes (themes.js)
         epRunTime: (d.episode_run_time && d.episode_run_time[0]) || 0,
         seasons: (d.seasons || [])
           .filter((s) => s.season_number > 0 && s.episode_count > 0)

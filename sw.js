@@ -2,7 +2,7 @@
  * - la coquille (html/css/js) : cache d'abord, réseau si absent
  * - TMDB (données + images) : on sert le cache et on rafraîchit en arrière-plan
  */
-const VERSION = "season-v28";
+const VERSION = "season-v29";
 const SHELL = VERSION + "-shell";
 const RUNTIME = VERSION + "-runtime";
 
@@ -13,6 +13,7 @@ const SHELL_FILES = [
   "./app.js",
   "./db.js",
   "./tmdb.js",
+  "./themes.js",
   "./config.js",
   "./manifest.webmanifest",
   "./icons/icon-192.png",

@@ -577,3 +577,12 @@ html[data-cols="5"] .poster-grid .poster-wrap { border-radius: 7px; }
 .poster-grid.no-caption .poster-sub { display: none; }
 /* onglets Séries et Films : affiches à angles droits (demandé le 18/09/2026) */
 html .poster-grid .poster-wrap { border-radius: 0; }
+
+/* ---- Thèmes (fiche + page thème) ---- */
+.theme-subs { display: flex; flex-wrap: wrap; gap: 6px; margin: -4px 0 12px; }
+.genre-tag.is-parent { border-color: var(--accent); color: var(--accent); }
+.genre-tag.is-on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.tag-edit { color: var(--text-dim); padding: 5px 11px; }
+.theme-editor { margin-top: 4px; }
+.theme-editor[hidden] { display: none; }
+.theme-pick { display: flex; flex-wrap: wrap; gap: 6px; }

@@ -61,64 +61,35 @@ Le dépôt public ne contient que la coquille de l'appli.
   une série coche tous ses épisodes, sans confirmation puisqu'elle vient de choisir).
 
 ### Fiche
-- Affiche, année, résumé. **Genres = pastilles cliquables** (`.genre-tag`) → vue genre.
+- Affiche, année, résumé. **Thèmes = pastilles cliquables** (`.genre-tag`) → page thème (voir Thèmes).
 
-### Vue genre (`renderGenre`, depuis une pastille de genre)
-- Titre = nom du genre ; segmented **Séries / Films** (ouvert sur le type de la fiche,
-  choix retenu par page dans `genreTab`).
-- Id du genre : `TMDB.genreId(type, nom)` (`/genre/{type}/list` fr-FR, cache session) —
-  les fiches ne stockent que les noms. Autre type : `TMDB.bridgeGenre` (`GENRE_BRIDGE`),
-  sinon même nom de l'autre côté ; sinon « Pas d'équivalent de ce genre côté … »
-  (ex. Romance n'existe pas côté séries chez TMDB).
-- `TMDB.byGenre` → `/discover` **populaires d'abord**, `vote_count.gte=20`, et si
-  plateformes choisies : `with_watch_providers` + `flatrate|free|ads` (pas de location).
-- **Vus / en cours masqués**, « à voir » gardés avec badge. Grille `.poster-grid
-  no-caption` de `recoCard` (respecte « vignettes par ligne »). « Voir plus » charge des
-  pages jusqu'à ~18 nouveaux titres visibles (5 pages max par clic). Cache session
-  `genreCache` → retour depuis une fiche instantané.
-- **Statut** :
-  - Film : boutons *À voir* / *Vu*.
-  - Série : *À voir* et *Vu* cochent / décochent toute la série (confirmation) ;
-    *En cours* est un simple témoin (non cliquable).
-- **Note** : 0 à 5 étoiles **par demi-étoiles** (moitié gauche d'une étoile = x,5, moitié droite = x ; retaper la note actuelle remet à 0 ; valeur « 3,5 / 5 » affichée à côté). `show.rating` peut donc valoir 0,5, 1, 1,5… 5.
-- **Avis** : zone de texte, enregistrement automatique (600 ms après la frappe + au blur).
-- **Épisodes** (séries) : accordéon par saison, case à cocher par épisode,
-  compteur et mini-barre de saison mis à jour **en direct**, bouton
-  *Tout cocher / décocher la saison*.
-- **Retirer de mes listes** (destructif, confirmation) — efface la série et ses épisodes.
-- **Où regarder** (sous le résumé, aussi sur une fiche pas encore ajoutée ; masqué
-  hors-ligne) : `TMDB.whereToWatch` → `/{type}/{id}/watch/providers`, région FR
-  (données JustWatch, lien « Source : JustWatch »). 2 lignes : *Abonnement*
-  (flatrate), *Gratuit* (free + ads) — **pas de location/achat** (elle ne loue pas,
-  retiré à sa demande le 18/09/2026) ; une plateforme
-  n'apparaît qu'une fois (1ʳᵉ ligne gagnante). Variantes fondues dans la principale
-  (« Netflix Standard with Ads » → Netflix, par préfixe de nom). **Ses plateformes**
-  (Réglages) en premier, entourées en bleu. 5 max par ligne puis bouton « +N ».
-  Rien → « Pas disponible en abonnement ni gratuitement en France pour l'instant ».
-- **Dans le même genre** (bas de fiche, aussi sur une fiche pas encore ajoutée ;
-  masqué hors-ligne) : deux rangées d'affiches défilant à l'horizontale, tap → fiche.
-  `TMDB.related(type, id)` = 1 appel `/{type}/{id}?append_to_response=recommendations,similar`
-  + 5 pages `/discover/{autre type}`.
-  - Rangée 1, **même type** : recommandations TMDB puis titres « similaires » en complément.
-  - Rangée 2, **l'autre type** (films pour une série, séries pour un film) : genres
-    traduits via `GENRE_BRIDGE` (les ids diffèrent entre séries et films ; téléréalité,
-    horreur… sans équivalent → ignorés), *Drame* ignoré s'il y a d'autres genres,
-    pas d'animation/jeunesse si le titre de départ n'en est pas ; classé par nombre
-    de genres en commun (jusqu'à 3, abaissé si < 8 résultats) puis popularité.
-    Forcément plus approximatif que la rangée 1.
-  - **Filtre** : titres **Vu** ou **En cours** masqués ; ceux **À voir** restent avec
-    un badge « À voir ». 15 max par rangée. Résultat TMDB mis en cache en mémoire
-    (`relatedCache`, clé = fiche + plateformes choisies) le temps de la session.
-  - **Plateformes** (si choisies dans Réglages) : seuls les titres dispo en
-    **abonnement, gratuit ou avec pub** (`flatrate|free|ads`, pas location/achat) sur
-    une de ses plateformes, en France (`REGION`, `config.js` peut le surcharger).
-    Rangée 1 : chaque recommandation est vérifiée via `/{type}/{id}/watch/providers`
-    (40 max, par lots de 8), complétée par un `/discover` du même type filtré par
-    plateformes si < 10. Rangée 2 : `/discover` avec `with_watch_providers`, puis
-    vérif pour le logo. Logo de la plateforme en bas à droite de chaque affiche.
-    ~4-5 s de chargement (spinner). Lien « Choisir / Modifier mes plateformes » sous
-    les rangées.
-
+### Thèmes (`themes.js`, depuis le 18/09/2026 — remplacent les genres TMDB)
+- **Pourquoi** : TMDB n'a **pas de genre Romance côté séries** (Off Campus = « Drame »,
+  Sterling Point = « Mystère, Drame ») ; ses **mots-clés** le disent (romance 9840,
+  romantic drama 304976). Classement **sur le modèle des listes Letterboxd** (grand thème +
+  sous-thèmes façon tropes) — Letterboxd = modèle seulement, pas de collecte de ses listes
+  (films seulement + interdit par ses conditions ; sa recherche renvoie 403 en direct).
+- `THEMES.list` : ~40 thèmes `{id,label,movieGenres,tvGenres,keywords,parent?,broad?,find?}`.
+  Romance + 9 sous-thèmes (comédie romantique, teen romance, ennemis/amis → amants, faux
+  couple, amours interdites & tragiques, saphique, été & vacances, à distance, fantastique),
+  puis Teen, Feel good, Thriller psy, Enquête, True crime, Histoires vraies, Historique, Queer,
+  Surnaturel & horreur, Dystopie, Voyage dans le temps… et les grands genres (`broad`, en dernier).
+  Ids de mots-clés vérifiés via `/search/keyword`. Écartés car trop larges : love 9673,
+  romantic 324429, slow burn 277551, second chance 34004 (ramenaient The Brutalist…).
+- **Détection** (`autoThemes`) : genres du type OU mots-clés de la fiche. `TMDB.tv/movie`
+  demandent `append_to_response=keywords` → `show.genreIds`, `show.keywordIds`. Fiche
+  suivie sans `keywordIds` = périmée → complétée en tâche de fond à l'ouverture. Repli
+  noms fr-FR → ids (`GENRE_NAMES`) pour les vieilles fiches.
+- **Fiche** : pastilles = `themesOf(show)` (précis d'abord). Fiche suivie : **✎** → tous les
+  thèmes à cocher ; `show.tagsAdd` / `show.tagsRemove` (relatifs à l'auto), prioritaires.
+- **Page thème** (`renderTheme(fromType, themeId)`) : Séries / Films, **pastilles des
+  sous-thèmes** (ou « ↑ Tout Romance » + voisins depuis un sous-thème), note plateformes.
+  Critères `THEMES.findFor` : par défaut genres OU mots-clés (une requête `/discover`
+  chacun, `TMDB.discoverPage`, fusion par popularité). **Romance plus stricte** (`find`) :
+  films = genre Romance seul ; séries = mots-clés romance nets **sans** Crime / Animation /
+  Action / Kids (sinon Spider-Man, Better Call Saul… passaient devant). En tête : ses
+  « à voir » du thème (auto ou ajouté) ; vus / en cours masqués ; thème retiré à la main
+  → titre exclu. « Voir plus », cache session `themeCache`, onglet retenu `themeTab`.
 ### Réglages (bouton ⚙ en haut à droite)
 - **Vignettes par ligne** (grilles Séries / Films) : Auto · 2 · 3 · 4 · 5. `localStorage`
   `season.cols` → attribut `html[data-cols]` (CSS en fin d'`app.css`) ; Auto = règle
