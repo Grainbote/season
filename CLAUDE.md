@@ -49,7 +49,7 @@ Le dépôt public ne contient que la coquille de l'appli.
   données importées.
 - Grille d'affiches. **Onglet Séries : affiches seules** (titre et `x/y épisodes` masqués
   via `.poster-grid.no-caption`, demandé le 18/09/2026), barre de progression gardée
-  sur l'affiche ; titre en `aria-label`. Onglet Films : titre + « Film » dessous. Affiches des deux onglets à **angles droits** (pas d'arrondi, 18/09/2026).
+  sur l'affiche ; titre en `aria-label`. Onglet Films : titre + « Film » dessous. Affiches des deux onglets à **angles droits** (pas d'arrondi) et **sans étiquette Série/Film** (inutile, déjà rangé par onglet) — 18/09/2026.
 - Le **statut d'une série est déduit** de la progression : 0 épisode = À voir,
   au moins 1 = En cours, tous = Vu. Le passage est automatique.
 
@@ -108,7 +108,7 @@ Le dépôt public ne contient que la coquille de l'appli.
 ### Réglages (bouton ⚙ en haut à droite)
 - **Vignettes par ligne** (grilles Séries / Films) : Auto · 2 · 3 · 4 · 5. `localStorage`
   `season.cols` → attribut `html[data-cols]` (CSS en fin d'`app.css`) ; Auto = règle
-  d'origine (3, ou 2 si ≤ 400 px). À 4-5 : texte réduit, badge Série/Film masqué.
+  d'origine (3, ou 2 si ≤ 400 px). À 4-5 : texte réduit.
   Inclus dans l'export (`settings.cols`).
 - **Mes plateformes de streaming** : liste TMDB `/watch/providers/{tv,movie}`
   (région FR, fusionnée, ordre de priorité TMDB, 40 premières + recherche),

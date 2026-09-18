@@ -283,7 +283,6 @@
     const card = el(
       `<button class="poster-card" aria-label="${esc(show.title)}">
         <div class="poster-wrap">
-          <span class="badge-type">${show.type === "tv" ? "Série" : "Film"}</span>
           ${img}${bar}
         </div>
         <div class="poster-title">${esc(show.title)}</div>

@@ -558,8 +558,6 @@ html[data-cols="4"] .poster-grid .poster-title,
 html[data-cols="5"] .poster-grid .poster-title { font-size: 10.5px; margin-top: 4px; }
 html[data-cols="4"] .poster-grid .poster-sub,
 html[data-cols="5"] .poster-grid .poster-sub { font-size: 9.5px; }
-html[data-cols="4"] .poster-grid .badge-type,
-html[data-cols="5"] .poster-grid .badge-type { display: none; }
 html[data-cols="5"] .poster-grid .poster-wrap { border-radius: 7px; }
 
 /* onglet Séries : affiches sans légende (titre et x/y épisodes masqués) */
