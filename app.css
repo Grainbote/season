@@ -547,3 +547,17 @@ textarea.review:focus { outline: none; border-color: var(--accent); }
 @media (max-width: 400px) {
   .poster-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
 }
+
+/* ---- Vignettes par ligne choisies dans Réglages (html[data-cols]) ---- */
+html[data-cols="2"] .poster-grid { grid-template-columns: repeat(2, 1fr); }
+html[data-cols="3"] .poster-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+html[data-cols="4"] .poster-grid { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+html[data-cols="5"] .poster-grid { grid-template-columns: repeat(5, 1fr); gap: 6px; }
+/* petites vignettes : texte et badge plus discrets */
+html[data-cols="4"] .poster-grid .poster-title,
+html[data-cols="5"] .poster-grid .poster-title { font-size: 10.5px; margin-top: 4px; }
+html[data-cols="4"] .poster-grid .poster-sub,
+html[data-cols="5"] .poster-grid .poster-sub { font-size: 9.5px; }
+html[data-cols="4"] .poster-grid .badge-type,
+html[data-cols="5"] .poster-grid .badge-type { display: none; }
+html[data-cols="5"] .poster-grid .poster-wrap { border-radius: 7px; }

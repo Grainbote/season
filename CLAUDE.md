@@ -104,6 +104,10 @@ Le dépôt public ne contient que la coquille de l'appli.
     les rangées.
 
 ### Réglages (bouton ⚙ en haut à droite)
+- **Vignettes par ligne** (grilles Séries / Films) : Auto · 2 · 3 · 4 · 5. `localStorage`
+  `season.cols` → attribut `html[data-cols]` (CSS en fin d'`app.css`) ; Auto = règle
+  d'origine (3, ou 2 si ≤ 400 px). À 4-5 : texte réduit, badge Série/Film masqué.
+  Inclus dans l'export (`settings.cols`).
 - **Mes plateformes de streaming** : liste TMDB `/watch/providers/{tv,movie}`
   (région FR, fusionnée, ordre de priorité TMDB, 40 premières + recherche),
   cases à cocher + puces des choisies. Stocké dans `localStorage`

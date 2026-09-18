@@ -47,6 +47,20 @@
   function setMyProviders(list) {
     localStorage.setItem("season.providers", JSON.stringify(list));
   }
+  // vignettes par ligne dans les grilles : "auto" (2 ou 3 selon l'écran) ou "2"…"5"
+  function gridCols() {
+    try { return localStorage.getItem("season.cols") || "auto"; } catch { return "auto"; }
+  }
+  function applyGridCols() {
+    const n = gridCols();
+    if (n === "auto") delete document.documentElement.dataset.cols;
+    else document.documentElement.dataset.cols = n;
+  }
+  function setGridCols(n) {
+    try { localStorage.setItem("season.cols", n); } catch {}
+    applyGridCols();
+  }
+  applyGridCols();
 
   // ---- navigation (pile de vues) ---------------------------------------
   let stack = [];
@@ -691,6 +705,22 @@
   let providersList = null; // liste TMDB, gardée le temps de la session
   async function renderReglages() {
     const wrap = el('<div></div>');
+
+    // --- affichage : vignettes par ligne (onglets Séries / Films) ---
+    wrap.append(el('<div class="section-title">Vignettes par ligne</div>'));
+    const colsSeg = el('<div class="segmented"></div>');
+    for (const n of ["auto", "2", "3", "4", "5"]) {
+      const b = el(`<button data-n="${n}">${n === "auto" ? "Auto" : n}</button>`);
+      if (gridCols() === n) b.classList.add("is-active");
+      b.addEventListener("click", () => {
+        setGridCols(n);
+        colsSeg.querySelectorAll("button").forEach((x) => x.classList.toggle("is-active", x === b));
+      });
+      colsSeg.append(b);
+    }
+    wrap.append(colsSeg);
+    wrap.append(el('<p class="poster-sub" style="margin:-6px 0 8px">Auto = 2 sur téléphone, 3 sur un écran plus large.</p>'));
+
     wrap.append(el('<div class="section-title">Mes plateformes de streaming</div>'));
     wrap.append(el(
       `<p class="poster-sub" style="margin-bottom:12px">Les suggestions « Dans le même genre » ne
@@ -1036,7 +1066,7 @@
     const exp = el('<button class="link-btn">⤓ Exporter mes données (fichier)</button>');
     exp.addEventListener("click", async () => {
       const data = await DB.exportAll();
-      data.settings = { providers: myProviders() };
+      data.settings = { providers: myProviders(), cols: gridCols() };
       const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
@@ -1055,6 +1085,7 @@
         if (!data || !Array.isArray(data.shows)) throw new Error("format");
         await DB.importAll(data);
         if (data.settings && Array.isArray(data.settings.providers)) setMyProviders(data.settings.providers);
+        if (data.settings && data.settings.cols) setGridCols(String(data.settings.cols));
         toast(`${data.shows.length} titres importés`);
         resetTo(renderSeries, "Séries", "listes");
       } catch {
