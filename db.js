@@ -3,10 +3,11 @@
  * Stores :
  *   shows    (clé = "tv:1399" ou "movie:603")
  *   episodes (clé = "tv:1399:1:2"  →  show : saison : épisode)
+ *   lists    (clé = "list:<horodatage>-<aléa>" — ses listes, façon Letterboxd)
  */
 window.DB = (() => {
   const NAME = "season";
-  const VERSION = 1;
+  const VERSION = 2; // 2 : ajout du store "lists" (20/09/2026)
   let dbp = null;
 
   function open() {
@@ -21,6 +22,10 @@ window.DB = (() => {
         if (!db.objectStoreNames.contains("episodes")) {
           const ep = db.createObjectStore("episodes", { keyPath: "key" });
           ep.createIndex("byShow", "showKey", { unique: false });
+        }
+        // ajouté en v2 : les bases déjà en v1 reçoivent juste ce store, rien n'est touché
+        if (!db.objectStoreNames.contains("lists")) {
+          db.createObjectStore("lists", { keyPath: "id" });
         }
       };
       req.onsuccess = () => resolve(req.result);
@@ -73,14 +78,36 @@ window.DB = (() => {
     async allEpisodes() {
       return asPromise((await tx("episodes", "readonly")).getAll());
     },
+    // --- listes (façon Letterboxd) ---
+    async allLists() {
+      return asPromise((await tx("lists", "readonly")).getAll());
+    },
+    async getList(id) {
+      return asPromise((await tx("lists", "readonly")).get(id));
+    },
+    async putList(list) {
+      list.updatedAt = Date.now();
+      return asPromise((await tx("lists", "readwrite")).put(list));
+    },
+    async deleteList(id) {
+      return asPromise((await tx("lists", "readwrite")).delete(id));
+    },
     async exportAll() {
-      return { shows: await this.allShows(), episodes: await this.allEpisodes(), version: VERSION };
+      return {
+        shows: await this.allShows(),
+        episodes: await this.allEpisodes(),
+        lists: await this.allLists(),
+        version: VERSION,
+      };
     },
     async importAll(data) {
       const s = await tx("shows", "readwrite");
       await Promise.all((data.shows || []).map((x) => asPromise(s.put(x))));
       const e = await tx("episodes", "readwrite");
       await Promise.all((data.episodes || []).map((x) => asPromise(e.put(x))));
+      // sauvegardes d'avant les listes (version 1) : rien à reprendre
+      const l = await tx("lists", "readwrite");
+      await Promise.all((data.lists || []).map((x) => asPromise(l.put(x))));
     },
   };
 })();

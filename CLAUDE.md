@@ -19,8 +19,8 @@ téléphone** (IndexedDB) — rien n'est envoyé nulle part.
 HTML/CSS/JS pur, **aucun framework, aucun outil de build** (comme ses autres projets).
 Le dépôt public ne contient que la coquille de l'appli.
 
-- `index.html` — structure, barre du haut (⚙ Réglages), 6 onglets (Séries, À venir,
-  Films, Recherche, **Favoris**, Stats)
+- `index.html` — structure, barre du haut (⚙ Réglages), 8 onglets (Séries, À venir,
+  Films, Recherche, **Favoris**, **Journal**, **Listes**, Stats)
 - `app.css` — thème sombre, mobile d'abord (max 560 px, safe-area iOS/Android) ; accent **orange** `#ff8a3d` (texte `--on-accent` foncé dessus), `--warn` rouge — depuis le 18/09/2026 (avant : bleu-violet). L'icône de l'appli est restée bleu-violet (`outils/creer-icones.ps1`)
 - `app.js` — toute la logique (navigation par pile de vues, rendu des écrans)
 - `db.js` — couche IndexedDB (stores `shows`, `episodes`)
@@ -116,8 +116,39 @@ Le dépôt public ne contient que la coquille de l'appli.
   aimés sur Letterboxd) ; toast du nombre repris. Elle peut décocher ensuite.
 - `favorite` est un champ de `shows` → inclus dans l'export / import.
 
+### Onglet Journal (depuis le 20/09/2026) — le « Diary » de Letterboxd
+- Tout ce qu'elle a coché, **du plus récent au plus ancien, groupé par mois**
+  (en-tête de mois collant), une ligne = jour dans un carré + affiche + titre ·
+  année + sa note en étoiles. Tap → fiche. `renderJournal`, styles `.diary-*`.
+- **Un film = une ligne** (`watchedAt` du film). **Les épisodes d'une même série
+  cochés le même jour sont réunis** en une ligne (`S1E1 → S1E4 · 4 épisodes`,
+  ou `S1E5 · titre` s'il n'y en a qu'un) — sinon une soirée de binge en ferait huit.
+- Affiché par paquets de 60 (`JOURNAL_PAGE`, bouton « Voir plus »).
+- ⚠ Les ~1190 films enregistrés en masse à son inscription Letterboxd (sept. 2023)
+  forment un gros bloc à cette date : c'est la date de l'export, pas la vraie.
+  Un titre sans `watchedAt` n'apparaît pas.
+
+### Onglet Listes (depuis le 20/09/2026) — les listes de Letterboxd
+- Store IndexedDB **`lists`** (base passée en **version 2** ; les bases en v1
+  reçoivent juste le nouveau store) : `{ id, name, description, items: [], createdAt,
+  updatedAt }`, `items` = `{type, tmdbId, title, year, poster}` — le titre est
+  **recopié** dans la liste, qui reste donc lisible hors-ligne et même si le titre
+  n'est pas (ou plus) suivi.
+- `renderMesListes` : bouton « ＋ Nouvelle liste » (`prompt` pour le nom), une carte
+  par liste (nom, compteur « N films / N séries / N titres », bande des 8 premières
+  affiches, description).
+- `renderListe(id)` : nom et description **modifiables sur place** (enregistrés à la
+  volée, comme l'avis d'une fiche), grille d'affiches, bouton **✎ Modifier** qui fait
+  apparaître une croix sur chaque affiche pour retirer un titre, et « Supprimer la
+  liste » (les titres eux-mêmes ne sont pas touchés).
+- **Fiche → ≡ Listes** (`listPicker`, à côté du ♥) : pastilles des listes à cocher /
+  décocher + « ＋ Nouvelle liste ». Marche aussi sur une fiche **pas encore suivie**.
+- Les listes sont dans l'**export / import** de sauvegarde (`data.lists` ; une
+  sauvegarde d'avant, sans ce champ, s'importe sans erreur).
+- Pas de réordonnancement manuel des titres en v1 (ordre d'ajout).
+
 ### Barre d'onglets qui défile (depuis le 20/09/2026)
-- 6 onglets ne tiennent pas sur 360 px : `#tabbar` déborde (`overflow-x`, onglets
+- 8 onglets ne tiennent pas sur 360 px : `#tabbar` déborde (`overflow-x`, onglets
   `flex: 1 0 78px`, barre de défilement masquée) et l'onglet actif est recentré par
   `setTab` (`scrollLeft` direct : ni `scrollIntoView` ni `behavior: "smooth"` ne
   bougent dans cette barre `position: fixed`).
@@ -229,12 +260,14 @@ fiche/réglages : écran précédent ; autre onglet : Séries ; Séries : toast
 « Appuie encore pour quitter » (2,2 s), 2ᵉ appui = sortie. Le piège est remis après
 chaque retour géré. Avant (jusqu'au 18/09/2026), retour fermait l'appli.
 
-## Modèle de données (IndexedDB `season`)
+## Modèle de données (IndexedDB `season`, version 2)
 
 - `shows`, clé `key` = `tv:<tmdbId>` ou `movie:<tmdbId>` : `type`, `title`, `year`,
   `poster`, `overview`, `genres[]`, `status`, `rating`, `review`, `seasons[]`
   (`{number,name,count}`), `totalEpisodes`, `watchedEpisodes`, `epRunTime`,
   `runtime` (film), `watchedMovie`, `favorite`, `createdAt`, `updatedAt`, `metaAt`, `epAt`.
+- `lists`, clé `id` = `list:<horodatage>-<aléa>` : `name`, `description`, `items[]`
+  (`{type,tmdbId,title,year,poster}`), `createdAt`, `updatedAt`.
 - `episodes`, clé `key` = `tv:<id>:<saison>:<épisode>`, index `byShow` :
   `showKey`, `season`, `episode`, `name`, `runtime`, `airDate`, `still`,
   `watched`, `watchedAt`.

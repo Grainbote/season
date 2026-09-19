@@ -189,6 +189,8 @@
     if (tab === "avenir") resetTo(renderAVenir, "À venir", "avenir");
     if (tab === "recherche") resetTo(renderRecherche, "Recherche", "recherche");
     if (tab === "favoris") resetTo(renderFavoris, "Favoris", "favoris");
+    if (tab === "journal") resetTo(renderJournal, "Journal", "journal");
+    if (tab === "meslistes") resetTo(renderMesListes, "Listes", "meslistes");
     if (tab === "stats") resetTo(renderStats, "Stats", "stats");
   }
   // 6 onglets ne tiennent pas sur un écran de 360 px : la barre déborde et
@@ -662,7 +664,8 @@
         </div>
       </div>`
     ));
-    // ♥ favori (fiche suivie) : alimente l'onglet Favoris
+    // boutons sous le sous-titre : ♥ favori (fiche suivie) et ≡ Listes (toujours)
+    const actions = el('<div class="detail-actions"></div>');
     if (saved) {
       const favBtn = el('<button class="fav-btn" type="button"><span class="fav-ico">♥</span><span class="fav-lbl"></span></button>');
       const paintFav = () => {
@@ -678,8 +681,19 @@
         toast(show.favorite ? "Ajouté aux favoris" : "Retiré des favoris");
       });
       paintFav();
-      wrap.querySelector(".detail-hero .sub").after(favBtn);
+      actions.append(favBtn);
     }
+    // ≡ Listes : marche aussi sur une fiche pas encore suivie (le titre est recopié)
+    const picker = listPicker(show);
+    const listsBtn = el('<button class="fav-btn" type="button"><span class="fav-ico">≡</span><span class="fav-lbl">Listes</span></button>');
+    listsBtn.addEventListener("click", () => {
+      picker.box.hidden = !picker.box.hidden;
+      listsBtn.classList.toggle("is-on", !picker.box.hidden);
+      if (!picker.box.hidden) picker.draw();
+    });
+    actions.append(listsBtn);
+    wrap.querySelector(".detail-hero .sub").after(actions);
+    wrap.querySelector(".detail-hero").after(picker.box);
     // thèmes (themes.js) → page des titres de ce thème pas encore vus, sur ses plateformes ;
     // fiche suivie : ✎ pour corriger à la main (ajouts / retraits prioritaires sur l'auto)
     const tagsBox = wrap.querySelector(".genres");
@@ -1124,6 +1138,266 @@
       seg.append(b);
     }
     showType(themeTab.get(viewKey) || fromType);
+  }
+
+  // ---- JOURNAL (le « Diary » de Letterboxd) -----------------------------
+  // Tout ce qu'elle a coché, du plus récent au plus ancien, groupé par mois.
+  // Un film = une ligne ; les épisodes d'une même série cochés le même jour sont
+  // réunis en une ligne (sinon une soirée de binge en ferait huit).
+  const JOURNAL_PAGE = 60;
+  function starsText(r) {
+    if (!r) return "";
+    return "★".repeat(Math.floor(r)) + (r % 1 ? "½" : "");
+  }
+  function monthLabel(d) {
+    return d.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  }
+  function diaryRow(x, d) {
+    const s = x.show;
+    const img = s.poster
+      ? `<img loading="lazy" src="${TMDB.poster(s.poster, "w92")}" alt="">`
+      : `<span class="poster-fallback">${esc(s.title)}</span>`;
+    let sub = "Film";
+    if (x.eps) {
+      const eps = x.eps.slice().sort((a, b) => a.season - b.season || a.episode - b.episode);
+      const code = (e) => `S${e.season}E${e.episode}`;
+      const f = eps[0], l = eps[eps.length - 1];
+      sub = eps.length === 1
+        ? code(f) + (f.name ? " · " + f.name : "")
+        : `${code(f)} → ${code(l)} · ${eps.length} épisodes`;
+    }
+    const row = el(
+      `<button class="diary-row">
+        <span class="diary-day">${d.getDate()}</span>
+        <span class="diary-poster">${img}</span>
+        <span class="diary-main">
+          <span class="diary-title">${esc(s.title)}${s.year ? ` <em>${esc(String(s.year))}</em>` : ""}</span>
+          <span class="diary-sub">${esc(sub)}</span>
+          ${s.rating ? `<span class="diary-stars">${starsText(s.rating)}</span>` : ""}
+        </span>
+      </button>`
+    );
+    row.addEventListener("click", () => go(() => renderDetail(s.key), s.title));
+    return row;
+  }
+  async function renderJournal() {
+    render(spinner());
+    const [shows, eps] = [await DB.allShows(), await DB.allEpisodes()];
+    const byKey = new Map(shows.map((s) => [s.key, s]));
+    const entries = [];
+    for (const s of shows) {
+      if (s.type === "movie" && s.watchedMovie && s.watchedAt) entries.push({ ts: s.watchedAt, show: s });
+    }
+    const days = new Map(); // "série|jour" → épisodes cochés ce jour-là
+    for (const e of eps) {
+      if (!e.watched || !e.watchedAt) continue;
+      const d = new Date(e.watchedAt);
+      const k = `${e.showKey}|${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      let g = days.get(k);
+      if (!g) { g = { ts: e.watchedAt, show: byKey.get(e.showKey), eps: [] }; days.set(k, g); }
+      g.eps.push(e);
+      if (e.watchedAt > g.ts) g.ts = e.watchedAt;
+    }
+    for (const g of days.values()) if (g.show) entries.push(g);
+    entries.sort((a, b) => b.ts - a.ts);
+
+    if (!entries.length) {
+      render(el('<div class="empty"><span class="big">▤</span>Rien dans le journal.<br>' +
+        "Coche un film ou un épisode : il s'inscrira ici avec sa date.</div>"));
+      return;
+    }
+    const wrap = el('<div></div>');
+    wrap.append(el(`<div class="poster-sub" style="margin:-4px 0 10px">${
+      entries.length} entrée${entries.length > 1 ? "s" : ""} · la plus récente en haut</div>`));
+    const list = el('<div class="diary"></div>');
+    const more = el('<button class="btn-primary genre-more">Voir plus</button>');
+    let shown = 0, lastMonth = "";
+    const addPage = () => {
+      for (const x of entries.slice(shown, shown + JOURNAL_PAGE)) {
+        const d = new Date(x.ts);
+        const mk = `${d.getFullYear()}-${d.getMonth()}`;
+        if (mk !== lastMonth) {
+          lastMonth = mk;
+          list.append(el(`<div class="diary-month">${esc(monthLabel(d))}</div>`));
+        }
+        list.append(diaryRow(x, d));
+      }
+      shown = Math.min(shown + JOURNAL_PAGE, entries.length);
+      more.hidden = shown >= entries.length;
+    };
+    addPage();
+    more.addEventListener("click", addPage);
+    wrap.append(list, more);
+    render(wrap);
+  }
+
+  // ---- MES LISTES (façon Letterboxd) ------------------------------------
+  // store `lists` : { id, name, description, items: [{type,tmdbId,title,year,poster}] }
+  // Les titres sont recopiés dans la liste : elle reste lisible même si le titre
+  // n'est pas (ou plus) suivi, et hors-ligne.
+  const listItem = (show) => ({
+    type: show.type,
+    tmdbId: show.tmdbId || +String(show.key || "").split(":")[1] || 0,
+    title: show.title,
+    year: show.year || "",
+    poster: show.poster || "",
+  });
+  const itemKey = (x) => `${x.type}:${x.tmdbId}`;
+  function listCount(l) {
+    const items = l.items || [];
+    const n = items.length;
+    const movies = items.filter((x) => x.type === "movie").length;
+    if (!n) return "vide";
+    if (movies === n) return `${n} film${n > 1 ? "s" : ""}`;
+    if (!movies) return `${n} série${n > 1 ? "s" : ""}`;
+    return `${n} titres`;
+  }
+  async function createList(name) {
+    const l = { id: `list:${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      name: name.trim(), description: "", items: [], createdAt: Date.now() };
+    await DB.putList(l);
+    return l;
+  }
+  async function renderMesListes() {
+    render(spinner());
+    const lists = (await DB.allLists())
+      .sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0));
+    const wrap = el('<div></div>');
+    const add = el('<button class="btn-primary list-new">＋ Nouvelle liste</button>');
+    add.addEventListener("click", async () => {
+      const nom = prompt("Nom de la liste ?");
+      if (!nom || !nom.trim()) return;
+      const l = await createList(nom);
+      go(() => renderListe(l.id), l.name);
+    });
+    wrap.append(add);
+    if (!lists.length) {
+      wrap.append(el('<div class="empty"><span class="big">≡</span>Pas encore de liste.<br>' +
+        "Crée-en une, puis range des titres dedans avec le bouton <b>≡ Listes</b> d'une fiche.</div>"));
+      render(wrap);
+      return;
+    }
+    for (const l of lists) {
+      const card = el(
+        `<button class="list-card">
+          <span class="list-head"><span class="list-name">${esc(l.name)}</span>
+            <span class="list-count">${esc(listCount(l))}</span></span>
+          <span class="list-strip"></span>
+          ${l.description ? `<span class="list-desc">${esc(l.description)}</span>` : ""}
+        </button>`
+      );
+      const strip = card.querySelector(".list-strip");
+      (l.items || []).slice(0, 8).forEach((x) => {
+        if (x.poster) strip.append(el(`<img loading="lazy" src="${TMDB.poster(x.poster, "w92")}" alt="">`));
+      });
+      card.addEventListener("click", () => go(() => renderListe(l.id), l.name));
+      wrap.append(card);
+    }
+    render(wrap);
+  }
+  async function renderListe(id) {
+    render(spinner());
+    const l = await DB.getList(id);
+    if (!l) { render(el('<div class="empty">Liste introuvable.</div>')); return; }
+    const wrap = el('<div></div>');
+
+    // nom et description : modifiables sur place, enregistrés en sortant du champ
+    const name = el('<input class="list-name-input" type="text" placeholder="Nom de la liste">');
+    name.value = l.name || "";
+    const desc = el('<textarea class="review" placeholder="Description (facultatif)…"></textarea>');
+    desc.value = l.description || "";
+    let saveT;
+    const save = async () => {
+      l.name = name.value.trim() || "Sans titre";
+      l.description = desc.value;
+      await DB.putList(l);
+      topTitle.textContent = l.name;
+    };
+    [name, desc].forEach((f) => {
+      f.addEventListener("input", () => { clearTimeout(saveT); saveT = setTimeout(save, 600); });
+      f.addEventListener("blur", save);
+    });
+    wrap.append(name, desc);
+
+    const bar = el('<div class="sort-bar" style="justify-content:space-between"></div>');
+    const count = el(`<label>${esc(listCount(l))}</label>`);
+    const edit = el('<button class="link-btn">✎ Modifier</button>');
+    bar.append(count, edit);
+    wrap.append(bar);
+
+    const grid = el('<div class="poster-grid no-caption list-grid"></div>');
+    const draw = () => {
+      grid.replaceChildren();
+      if (!(l.items || []).length) {
+        grid.append(el('<div class="empty">Liste vide.<br>Ouvre une fiche et touche <b>≡ Listes</b> pour y ranger un titre.</div>'));
+        return;
+      }
+      l.items.forEach((x, i) => {
+        const card = recoCard(x);
+        const del = el('<span class="item-del" role="button" aria-label="Retirer de la liste">✕</span>');
+        del.addEventListener("click", async (ev) => {
+          ev.stopPropagation();
+          l.items.splice(i, 1);
+          await DB.putList(l);
+          count.textContent = listCount(l);
+          draw();
+        });
+        card.querySelector(".poster-wrap").append(del);
+        grid.append(card);
+      });
+    };
+    edit.addEventListener("click", () => {
+      const on = grid.classList.toggle("is-editing");
+      edit.textContent = on ? "✓ Terminé" : "✎ Modifier";
+    });
+    draw();
+    wrap.append(grid);
+
+    const del = el('<button class="link-btn" style="color:var(--warn);margin-top:24px">Supprimer la liste</button>');
+    del.addEventListener("click", async () => {
+      if (!confirm(`Supprimer la liste « ${l.name} » ? Les titres eux-mêmes ne sont pas touchés.`)) return;
+      await DB.deleteList(l.id);
+      toast("Liste supprimée");
+      back();
+    });
+    wrap.append(del);
+    render(wrap);
+  }
+  // panneau « ≡ Listes » d'une fiche : cocher les listes où ranger ce titre
+  function listPicker(show) {
+    const box = el('<div class="theme-editor" hidden></div>');
+    const item = listItem(show);
+    const draw = async () => {
+      const lists = (await DB.allLists())
+        .sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0));
+      box.replaceChildren(el('<div class="section-title">Ranger dans une liste</div>'));
+      const pick = el('<div class="theme-pick"></div>');
+      for (const l of lists) {
+        const on = (l.items || []).some((x) => itemKey(x) === itemKey(item));
+        const b = el(`<button class="genre-tag${on ? " is-on" : ""}">${esc(l.name)}</button>`);
+        b.addEventListener("click", async () => {
+          l.items = l.items || [];
+          l.items = on ? l.items.filter((x) => itemKey(x) !== itemKey(item)) : [...l.items, item];
+          await DB.putList(l);
+          toast(on ? `Retiré de « ${l.name} »` : `Ajouté à « ${l.name} »`);
+          draw();
+        });
+        pick.append(b);
+      }
+      const nu = el('<button class="genre-tag tag-edit">＋ Nouvelle liste</button>');
+      nu.addEventListener("click", async () => {
+        const nom = prompt("Nom de la liste ?");
+        if (!nom || !nom.trim()) return;
+        const l = await createList(nom);
+        l.items = [item];
+        await DB.putList(l);
+        toast(`Ajouté à « ${l.name} »`);
+        draw();
+      });
+      pick.append(nu);
+      box.append(pick);
+    };
+    return { box, draw };
   }
 
   // ---- RÉGLAGES -----------------------------------------------------
