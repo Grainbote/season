@@ -93,9 +93,21 @@ img { max-width: 100%; }
   background: var(--bg-elev);
   border-top: 1px solid var(--line);
   z-index: 20;
+  /* 6 onglets : la barre déborde sur un écran étroit, elle défile
+     (défilement piloté par app.js, d'où touch-action: none) */
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  touch-action: none;
+  scrollbar-width: none;
 }
+#tabbar::-webkit-scrollbar { display: none; }
+#tabbar.is-panning { cursor: grabbing; }
+#tabbar.is-panning .tab { opacity: 0.6; }
 .tab {
-  flex: 1;
+  /* grandit s'il reste de la place, sinon 78 px chacun et la barre défile */
+  flex: 1 0 78px;
+  white-space: nowrap;
   background: none;
   border: none;
   color: var(--text-dim);
@@ -110,6 +122,29 @@ img { max-width: 100%; }
 }
 .tab-ico { font-size: 17px; }
 .tab.is-active { color: var(--accent); }
+.tab { transition: opacity 0.12s; }
+
+/* ---- ♥ favori (fiche) ---- */
+.fav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 2px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg-elev);
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.fav-btn .fav-ico { font-size: 14px; }
+.fav-btn.is-on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
 
 /* ---- Segmented (À voir / En cours / Vu) ---- */
 .segmented {

@@ -19,7 +19,8 @@ téléphone** (IndexedDB) — rien n'est envoyé nulle part.
 HTML/CSS/JS pur, **aucun framework, aucun outil de build** (comme ses autres projets).
 Le dépôt public ne contient que la coquille de l'appli.
 
-- `index.html` — structure, barre du haut (⚙ Réglages), 5 onglets (Séries, À venir, Films, Recherche, Stats)
+- `index.html` — structure, barre du haut (⚙ Réglages), 6 onglets (Séries, À venir,
+  Films, Recherche, **Favoris**, Stats)
 - `app.css` — thème sombre, mobile d'abord (max 560 px, safe-area iOS/Android) ; accent **orange** `#ff8a3d` (texte `--on-accent` foncé dessus), `--warn` rouge — depuis le 18/09/2026 (avant : bleu-violet). L'icône de l'appli est restée bleu-violet (`outils/creer-icones.ps1`)
 - `app.js` — toute la logique (navigation par pile de vues, rendu des écrans)
 - `db.js` — couche IndexedDB (stores `shows`, `episodes`)
@@ -90,6 +91,35 @@ Le dépôt public ne contient que la coquille de l'appli.
   Action / Kids (sinon Spider-Man, Better Call Saul… passaient devant). En tête : ses
   « à voir » du thème (auto ou ajouté) ; vus / en cours masqués ; thème retiré à la main
   → titre exclu. « Voir plus », cache session `themeCache`, onglet retenu `themeTab`.
+### Onglet Favoris (depuis le 20/09/2026)
+- Placé **après Recherche**. Liste les fiches marquées `show.favorite`.
+- Marquage : bouton **♥ Ajouter aux favoris / ♥ Favori** sur la fiche (sous le
+  sous-titre, visible seulement sur une fiche suivie) ; `renderFavoris`.
+- Segmented **Tout / Séries / Films** avec compteurs (`season.favKind`), même barre
+  de tri que les listes (`season.favSort`, défaut Titre A→Z) et même grille
+  d'affiches seules (`.poster-grid.no-caption`).
+- **Favoris repris des imports** (`seedFavorites`, une seule fois, drapeau
+  `localStorage season.favSeed`) : toute fiche dont l'avis contient « Favori sur
+  TV Time », « Film favori sur Letterboxd » ou « Aimé sur Letterboxd » est cochée
+  au 1ᵉʳ lancement (son choix du 20/09/2026 : tout reprendre, y compris les films
+  aimés sur Letterboxd) ; toast du nombre repris. Elle peut décocher ensuite.
+- `favorite` est un champ de `shows` → inclus dans l'export / import.
+
+### Barre d'onglets qui défile (depuis le 20/09/2026)
+- 6 onglets ne tiennent pas sur 360 px : `#tabbar` déborde (`overflow-x`, onglets
+  `flex: 1 0 78px`, barre de défilement masquée) et l'onglet actif est recentré par
+  `setTab` (`scrollLeft` direct : ni `scrollIntoView` ni `behavior: "smooth"` ne
+  bougent dans cette barre `position: fixed`).
+- Défilement **piloté par app.js** (`touch-action: none`, pointer events) : rester
+  appuyé ~300 ms prend la barre en main (courte vibration, onglets estompés
+  `.is-panning`), un glissement de plus de 6 px la prend aussi ; molette = défilement
+  horizontal sur PC.
+- Le **choix de l'onglet se fait au relâchement**, sur l'onglet touché à l'appui :
+  toucher un onglet à moitié visible le fait défiler sous le doigt et le `click` du
+  navigateur serait perdu (cible différente entre appui et relâché). Le `click` reste
+  écouté pour le clavier, ignoré s'il suit un relâchement déjà traité (`panDone`) ou
+  un défilement (`panMoved`).
+
 ### Réglages (bouton ⚙ en haut à droite)
 - **Vignettes par ligne** (grilles Séries / Films) : Auto · 2 · 3 · 4 · 5. `localStorage`
   `season.cols` → attribut `html[data-cols]` (CSS en fin d'`app.css`) ; Auto = règle
@@ -193,7 +223,7 @@ chaque retour géré. Avant (jusqu'au 18/09/2026), retour fermait l'appli.
 - `shows`, clé `key` = `tv:<tmdbId>` ou `movie:<tmdbId>` : `type`, `title`, `year`,
   `poster`, `overview`, `genres[]`, `status`, `rating`, `review`, `seasons[]`
   (`{number,name,count}`), `totalEpisodes`, `watchedEpisodes`, `epRunTime`,
-  `runtime` (film), `watchedMovie`, `createdAt`, `updatedAt`, `metaAt`, `epAt`.
+  `runtime` (film), `watchedMovie`, `favorite`, `createdAt`, `updatedAt`, `metaAt`, `epAt`.
 - `episodes`, clé `key` = `tv:<id>:<saison>:<épisode>`, index `byShow` :
   `showKey`, `season`, `episode`, `name`, `runtime`, `airDate`, `still`,
   `watched`, `watchedAt`.

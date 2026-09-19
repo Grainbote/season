@@ -66,7 +66,14 @@
   let stack = [];
   let navSeq = 0; // change à chaque changement d'écran (pour ignorer les rendus tardifs)
   function setTab(tab) {
-    [...tabbar.children].forEach((b) => b.classList.toggle("is-active", b.dataset.tab === tab));
+    [...tabbar.children].forEach((b) => {
+      const on = b.dataset.tab === tab;
+      b.classList.toggle("is-active", on);
+      // la barre défile (6 onglets) : on ramène l'onglet choisi sous les yeux.
+      // Calcul à la main et `scrollLeft` direct : ni scrollIntoView ni
+      // `behavior: "smooth"` ne bougent dans cette barre fixée.
+      if (on) tabbar.scrollLeft = b.offsetLeft + b.offsetWidth / 2 - tabbar.clientWidth / 2;
+    });
   }
   // Position de défilement : mémorisée sur l'écran qu'on quitte (go), rendue au retour
   // (back). L'écran se redessine au retour, souvent en 2 temps (spinner, puis contenu,
@@ -175,16 +182,82 @@
     if (stack[stack.length - 1]?.fn === renderReglages) return;
     go(renderReglages, "Réglages");
   });
-  tabbar.addEventListener("click", (e) => {
-    const b = e.target.closest(".tab");
-    if (!b) return;
-    const tab = b.dataset.tab;
+  // ---- barre d'onglets ---------------------------------------------------
+  function selectTab(tab) {
     if (tab === "listes") resetTo(renderSeries, "Séries", "listes");
     if (tab === "films") resetTo(renderFilms, "Films", "films");
     if (tab === "avenir") resetTo(renderAVenir, "À venir", "avenir");
     if (tab === "recherche") resetTo(renderRecherche, "Recherche", "recherche");
+    if (tab === "favoris") resetTo(renderFavoris, "Favoris", "favoris");
     if (tab === "stats") resetTo(renderStats, "Stats", "stats");
+  }
+  // 6 onglets ne tiennent pas sur un écran de 360 px : la barre déborde et
+  // défile. Le défilement est fait à la main (CSS `touch-action: none`) pour
+  // que le navigateur ne s'en mêle pas : rester appuyé ~300 ms prend la barre
+  // en main (courte vibration, onglets estompés), un glissement franc (> 6 px)
+  // la prend aussi ; dans les deux cas on ne change pas d'onglet en relâchant.
+  // Le choix se fait au relâchement, sur l'onglet touché à l'appui : appuyer
+  // sur un onglet à moitié visible le fait défiler sous le doigt, et le clic
+  // du navigateur serait alors perdu (cible différente entre appui et relâché).
+  let panT = null, panning = false, panMoved = false;
+  let panX = 0, panLeft = 0, panId = null, panBtn = null, panDone = 0;
+  const grabBar = () => {
+    panning = true;
+    tabbar.classList.add("is-panning");
+    if (panId != null) { try { tabbar.setPointerCapture(panId); } catch {} }
+  };
+  const endPan = () => {
+    clearTimeout(panT); panT = null;
+    if (panning && panId != null) { try { tabbar.releasePointerCapture(panId); } catch {} }
+    panning = false; panId = null;
+    tabbar.classList.remove("is-panning");
+  };
+  tabbar.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    panMoved = false; panning = false;
+    panX = e.clientX; panLeft = tabbar.scrollLeft; panId = e.pointerId;
+    panBtn = e.target.closest(".tab");
+    clearTimeout(panT);
+    panT = setTimeout(() => {
+      grabBar();
+      if (navigator.vibrate) navigator.vibrate(12);
+    }, 300);
   });
+  tabbar.addEventListener("pointermove", (e) => {
+    if (panId == null || e.pointerId !== panId) return;
+    const dx = e.clientX - panX;
+    if (!panning) {
+      if (Math.abs(dx) < 6) return;
+      clearTimeout(panT); panT = null;
+      grabBar();
+    }
+    panMoved = true;
+    tabbar.scrollLeft = panLeft - dx;
+    e.preventDefault();
+  });
+  tabbar.addEventListener("pointerup", (e) => {
+    if (panId != null && e.pointerId !== panId) return;
+    const btn = panBtn, moved = panMoved;
+    endPan();
+    panBtn = null;
+    if (moved || !btn) return;
+    panDone = Date.now(); // le clic qui suivra a déjà été traité
+    selectTab(btn.dataset.tab);
+  });
+  tabbar.addEventListener("pointercancel", () => { panBtn = null; endPan(); });
+  // clavier (Entrée / Espace) : le clic arrive sans événement pointeur
+  tabbar.addEventListener("click", (e) => {
+    if (Date.now() - panDone < 500 || panMoved) return;
+    const b = e.target.closest(".tab");
+    if (b) selectTab(b.dataset.tab);
+  });
+  // molette (PC) : elle est verticale, on la transforme en défilement horizontal
+  tabbar.addEventListener("wheel", (e) => {
+    const over = tabbar.scrollWidth - tabbar.clientWidth;
+    if (over <= 0) return;
+    tabbar.scrollLeft += e.deltaY || e.deltaX;
+    e.preventDefault();
+  }, { passive: false });
 
   // ---- calculs partagés -------------------------------------------------
   function watchedCount(episodes) {
@@ -254,37 +327,15 @@
     wrap.append(seg);
 
     // barre de tri
-    const sortBar = el('<div class="sort-bar"><label>Trier :</label><select></select></div>');
-    const sel = sortBar.querySelector("select");
-    for (const [k, label] of Object.entries(SORTS)) {
-      const o = el(`<option value="${k}">${label}</option>`);
-      if (k === listesSort) o.selected = true;
-      sel.append(o);
-    }
-    sel.addEventListener("change", () => {
-      listesSort = sel.value;
+    wrap.append(sortBar(listesSort, (v) => {
+      listesSort = v;
       localStorage.setItem("season.sort", listesSort);
       renderListes();
-    });
-    wrap.append(sortBar);
+    }));
 
     // dernier visionnage par série (à partir de tous les épisodes vus)
-    let epMax = null;
-    if (listesSort === "vu") {
-      epMax = new Map();
-      for (const e of await DB.allEpisodes()) {
-        if (e.watched && e.watchedAt) {
-          const cur = epMax.get(e.showKey) || 0;
-          if (e.watchedAt > cur) epMax.set(e.showKey, e.watchedAt);
-        }
-      }
-    }
-
-    const sorters = {
-      vu: (a, b) => lastActivity(b, epMax) - lastActivity(a, epMax),
-      ajout: (a, b) => (b.createdAt || 0) - (a.createdAt || 0),
-      titre: (a, b) => (a.title || "").localeCompare(b.title || "", "fr", { sensitivity: "base" }),
-    };
+    const epMax = listesSort === "vu" ? await lastWatchedMap() : null;
+    const sorters = sortersFor(epMax);
     const inList = shows.filter((s) => statusOf(s) === listesFilter).sort(sorters[listesSort] || sorters.vu);
 
     if (!inList.length) {
@@ -331,6 +382,107 @@
     );
     card.addEventListener("click", () => go(() => renderDetail(show.key), show.title));
     return card;
+  }
+
+  // dernier épisode vu par série (sert aux tris « Vu récemment »)
+  async function lastWatchedMap() {
+    const m = new Map();
+    for (const e of await DB.allEpisodes()) {
+      if (e.watched && e.watchedAt) {
+        const cur = m.get(e.showKey) || 0;
+        if (e.watchedAt > cur) m.set(e.showKey, e.watchedAt);
+      }
+    }
+    return m;
+  }
+  function sortersFor(epMax) {
+    return {
+      vu: (a, b) => lastActivity(b, epMax) - lastActivity(a, epMax),
+      ajout: (a, b) => (b.createdAt || 0) - (a.createdAt || 0),
+      titre: (a, b) => (a.title || "").localeCompare(b.title || "", "fr", { sensitivity: "base" }),
+    };
+  }
+  // barre de tri commune (Séries / Films / Favoris)
+  function sortBar(current, onChange) {
+    const bar = el('<div class="sort-bar"><label>Trier :</label><select></select></div>');
+    const sel = bar.querySelector("select");
+    for (const [k, label] of Object.entries(SORTS)) {
+      const o = el(`<option value="${k}">${label}</option>`);
+      if (k === current) o.selected = true;
+      sel.append(o);
+    }
+    sel.addEventListener("change", () => onChange(sel.value));
+    return bar;
+  }
+
+  // ---- FAVORIS ---------------------------------------------------------
+  // `show.favorite` : coché à la main par le ♥ de la fiche (repris une fois des
+  // imports TV Time / Letterboxd, voir seedFavorites).
+  const FAV_KINDS = { all: "Tout", tv: "Séries", movie: "Films" };
+  let favKind = localStorage.getItem("season.favKind") || "all";
+  let favSort = localStorage.getItem("season.favSort") || "titre";
+  async function renderFavoris() {
+    render(spinner());
+    const favs = (await DB.allShows()).filter((s) => s.favorite);
+    const counts = { all: favs.length, tv: 0, movie: 0 };
+    favs.forEach((s) => { counts[s.type] = (counts[s.type] || 0) + 1; });
+
+    const wrap = el('<div></div>');
+    const seg = el('<div class="segmented"></div>');
+    for (const [k, label] of Object.entries(FAV_KINDS)) {
+      const b = el(`<button data-k="${k}">${label}<span class="count-pill">${counts[k] || 0}</span></button>`);
+      if (k === favKind) b.classList.add("is-active");
+      b.addEventListener("click", () => {
+        favKind = k;
+        try { localStorage.setItem("season.favKind", k); } catch {}
+        renderFavoris();
+      });
+      seg.append(b);
+    }
+    wrap.append(seg);
+    wrap.append(sortBar(favSort, (v) => {
+      favSort = v;
+      try { localStorage.setItem("season.favSort", v); } catch {}
+      renderFavoris();
+    }));
+
+    const epMax = favSort === "vu" ? await lastWatchedMap() : null;
+    const sorters = sortersFor(epMax);
+    const list = favs
+      .filter((s) => favKind === "all" || s.type === favKind)
+      .sort(sorters[favSort] || sorters.titre);
+
+    if (!list.length) {
+      wrap.append(el(
+        `<div class="empty"><span class="big">♥</span>` +
+        (favs.length
+          ? `Aucun favori dans « ${FAV_KINDS[favKind]} ».`
+          : `Pas encore de favori.<br>Ouvre une fiche et touche <b>♥ Ajouter aux favoris</b>.`) +
+        `</div>`
+      ));
+    } else {
+      const grid = el('<div class="poster-grid no-caption"></div>');
+      list.forEach((s) => grid.append(posterCard(s)));
+      wrap.append(grid);
+    }
+    render(wrap);
+  }
+
+  // Favoris repris une seule fois des imports (TV Time, Letterboxd) : son choix
+  // du 20/09/2026 — ★ favoris TV Time, ★ favoris de profil et ♥ films aimés.
+  async function seedFavorites() {
+    try {
+      if (localStorage.getItem("season.favSeed") === "1") return;
+      const marks = ["Favori sur TV Time", "Film favori sur Letterboxd", "Aimé sur Letterboxd"];
+      let n = 0;
+      for (const s of await DB.allShows()) {
+        if (s.favorite) continue;
+        const r = s.review || "";
+        if (marks.some((m) => r.includes(m))) { s.favorite = true; await DB.putShow(s); n++; }
+      }
+      localStorage.setItem("season.favSeed", "1");
+      if (n) toast(`${n} favoris repris de TV Time / Letterboxd`);
+    } catch {}
   }
 
   // ---- RECHERCHE -----------------------------------------------------
@@ -510,6 +662,24 @@
         </div>
       </div>`
     ));
+    // ♥ favori (fiche suivie) : alimente l'onglet Favoris
+    if (saved) {
+      const favBtn = el('<button class="fav-btn" type="button"><span class="fav-ico">♥</span><span class="fav-lbl"></span></button>');
+      const paintFav = () => {
+        favBtn.classList.toggle("is-on", !!show.favorite);
+        favBtn.querySelector(".fav-lbl").textContent = show.favorite ? "Favori" : "Ajouter aux favoris";
+        favBtn.setAttribute("aria-pressed", show.favorite ? "true" : "false");
+      };
+      favBtn.addEventListener("click", async () => {
+        show.favorite = !show.favorite;
+        show.updatedAt = Date.now();
+        await DB.putShow(show);
+        paintFav();
+        toast(show.favorite ? "Ajouté aux favoris" : "Retiré des favoris");
+      });
+      paintFav();
+      wrap.querySelector(".detail-hero .sub").after(favBtn);
+    }
     // thèmes (themes.js) → page des titres de ce thème pas encore vus, sur ses plateformes ;
     // fiche suivie : ✎ pour corriger à la main (ajouts / retraits prioritaires sur l'auto)
     const tagsBox = wrap.querySelector(".genres");
@@ -1505,4 +1675,5 @@
   window.addEventListener("online", () => toast("De retour en ligne"));
 
   resetTo(renderSeries, "Séries", "listes");
+  seedFavorites();
 })();
