@@ -298,6 +298,7 @@
     vu: "Vu récemment",
     ajout: "Ajout récent",
     titre: "Titre A→Z",
+    populaire: "Popularité",
   };
   let listesSort = localStorage.getItem("season.sort") || "vu";
   async function renderListes() {
@@ -334,6 +335,10 @@
       localStorage.setItem("season.sort", listesSort);
       renderListes();
     }));
+    if (listesSort === "populaire") {
+      const pb = popularityBar(shows, renderListes);
+      if (pb) wrap.append(pb);
+    }
 
     // dernier visionnage par série (à partir de tous les épisodes vus)
     const epMax = listesSort === "vu" ? await lastWatchedMap() : null;
@@ -398,11 +403,45 @@
     return m;
   }
   function sortersFor(epMax) {
+    const parTitre = (a, b) => (a.title || "").localeCompare(b.title || "", "fr", { sensitivity: "base" });
     return {
       vu: (a, b) => lastActivity(b, epMax) - lastActivity(a, epMax),
       ajout: (a, b) => (b.createdAt || 0) - (a.createdAt || 0),
-      titre: (a, b) => (a.title || "").localeCompare(b.title || "", "fr", { sensitivity: "base" }),
+      titre: parTitre,
+      // popularité TMDB ; les fiches qui ne l'ont pas encore passent en dernier
+      populaire: (a, b) => (b.popularity || 0) - (a.popularity || 0) || parTitre(a, b),
     };
+  }
+  // La popularité n'était pas enregistrée avant le 20/09/2026 : les fiches d'avant
+  // ne l'ont pas. Une barre propose de la récupérer (une requête par titre, par
+  // paquets de 12) ; sans ça elles se rangent simplement en dernier.
+  let popFilling = false;
+  function popularityBar(shows, onDone) {
+    const missing = shows.filter((s) => s.tmdbId && s.popularity == null);
+    if (!missing.length || popFilling) return null;
+    const bar = el('<div class="reco-note" style="margin:-8px 0 12px"></div>');
+    const plur = missing.length > 1 ? "s" : "";
+    const txt = el(`<span>Popularité inconnue pour ${missing.length} titre${plur} (rangé${plur} en dernier). </span>`);
+    const btn = el('<button class="link-btn">↻ Récupérer</button>');
+    bar.append(txt, btn);
+    btn.addEventListener("click", async () => {
+      if (popFilling) return;
+      if (!navigator.onLine || !TMDB.hasKey()) { toast("Pas de réseau"); return; }
+      popFilling = true;
+      btn.hidden = true;
+      let done = 0;
+      txt.textContent = `Popularité… 0/${missing.length}`;
+      await poolRun(missing, 12, async (s) => {
+        try {
+          s.popularity = await TMDB.popularityOf(s.type, s.tmdbId);
+          await DB.putShowQuiet(s); // sans toucher updatedAt
+        } catch { /* on réessaiera la prochaine fois */ }
+        txt.textContent = `Popularité… ${++done}/${missing.length}`;
+      });
+      popFilling = false;
+      onDone();
+    });
+    return bar;
   }
   // barre de tri commune (Séries / Films / Favoris)
   function sortBar(current, onChange) {
@@ -447,6 +486,10 @@
       try { localStorage.setItem("season.favSort", v); } catch {}
       renderFavoris();
     }));
+    if (favSort === "populaire") {
+      const pb = popularityBar(favs, renderFavoris);
+      if (pb) wrap.append(pb);
+    }
 
     const epMax = favSort === "vu" ? await lastWatchedMap() : null;
     const sorters = sortersFor(epMax);

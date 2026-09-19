@@ -98,6 +98,7 @@ window.TMDB = (() => {
         genreIds: (d.genres || []).map((g) => g.id),
         keywordIds: ((d.keywords || {}).keywords || []).map((k) => k.id), // → thèmes (themes.js)
         runtime: d.runtime || 0,
+        popularity: d.popularity || 0, // → tri « Popularité » des listes
       };
     },
 
@@ -115,10 +116,18 @@ window.TMDB = (() => {
         genreIds: (d.genres || []).map((g) => g.id),
         keywordIds: ((d.keywords || {}).results || []).map((k) => k.id), // → thèmes (themes.js)
         epRunTime: (d.episode_run_time && d.episode_run_time[0]) || 0,
+        popularity: d.popularity || 0, // → tri « Popularité » des listes
         seasons: (d.seasons || [])
           .filter((s) => s.season_number > 0 && s.episode_count > 0)
           .map((s) => ({ number: s.season_number, name: s.name, count: s.episode_count })),
       };
+    },
+
+    // popularité seule d'un titre (rattrapage des fiches enregistrées avant
+    // qu'on la stocke, pour le tri « Popularité »)
+    async popularityOf(type, id) {
+      const d = await call(`/${type}/${id}`);
+      return d.popularity || 0;
     },
 
     // état de diffusion + prochain épisode annoncé (pour l'onglet « À venir »)

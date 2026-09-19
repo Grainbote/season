@@ -45,7 +45,14 @@ Le dépôt public ne contient que la coquille de l'appli.
 - **Tri** (menu déroulant, choix retenu dans `localStorage` `season.sort`) :
   *Vu récemment* (défaut — date du dernier épisode coché, ou date du film ;
   calculée en parcourant tous les épisodes), *Ajout récent* (`createdAt`),
-  *Titre A→Z*. `show.lastWatchedAt` est tenu à jour par `recomputeAndSave` mais
+  *Titre A→Z*, **Popularité** (depuis le 20/09/2026). Même menu sur Favoris
+  (`season.favSort`) — un seul `sortBar` / `sortersFor` partagé.
+- **Popularité** = `show.popularity` (TMDB), enregistrée depuis le 20/09/2026 par
+  `TMDB.tv/movie` (donc mise à jour à chaque rafraîchissement de fiche). Les fiches
+  plus anciennes ne l'ont pas : elles se rangent **en dernier**, et une barre sous le
+  tri propose « ↻ Récupérer » (`popularityBar` → `TMDB.popularityOf`, paquets de 12,
+  compteur). L'écriture passe par `DB.putShowQuiet` pour **ne pas toucher
+  `updatedAt`** (sinon le tri « Vu récemment » serait chamboulé). `show.lastWatchedAt` est tenu à jour par `recomputeAndSave` mais
   le tri « vu récemment » recalcule depuis `DB.allEpisodes()` pour couvrir les
   données importées.
 - Grille d'affiches. **Onglets Séries et Films : affiches seules** (titre, `x/y épisodes`
@@ -265,7 +272,8 @@ chaque retour géré. Avant (jusqu'au 18/09/2026), retour fermait l'appli.
 - `shows`, clé `key` = `tv:<tmdbId>` ou `movie:<tmdbId>` : `type`, `title`, `year`,
   `poster`, `overview`, `genres[]`, `status`, `rating`, `review`, `seasons[]`
   (`{number,name,count}`), `totalEpisodes`, `watchedEpisodes`, `epRunTime`,
-  `runtime` (film), `watchedMovie`, `favorite`, `createdAt`, `updatedAt`, `metaAt`, `epAt`.
+  `runtime` (film), `watchedMovie`, `favorite`, `popularity`, `createdAt`, `updatedAt`,
+  `metaAt`, `epAt`.
 - `lists`, clé `id` = `list:<horodatage>-<aléa>` : `name`, `description`, `items[]`
   (`{type,tmdbId,title,year,poster}`), `createdAt`, `updatedAt`.
 - `episodes`, clé `key` = `tv:<id>:<saison>:<épisode>`, index `byShow` :

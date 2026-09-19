@@ -55,6 +55,11 @@ window.DB = (() => {
       show.updatedAt = Date.now();
       return asPromise((await tx("shows", "readwrite")).put(show));
     },
+    // écriture « discrète » : ne touche pas `updatedAt` (remplissage en masse,
+    // sinon le tri « Vu récemment » se retrouverait chamboulé)
+    async putShowQuiet(show) {
+      return asPromise((await tx("shows", "readwrite")).put(show));
+    },
     async deleteShow(key) {
       const store = await tx("shows", "readwrite");
       await asPromise(store.delete(key));
