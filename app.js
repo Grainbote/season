@@ -41,6 +41,51 @@
 
   // ---- réglages (dans le téléphone, localStorage) ---------------------------
   // plateformes de streaming choisies : [{id, name, logo}] — vide = pas de filtre
+  // ---- « Pas intéressé » -------------------------------------------------
+  // Titres qu'elle ne veut plus voir proposés (suggestions de fiche, pages de
+  // thème). Petite liste gardée dans localStorage (`{key,title,poster}`),
+  // reprise dans l'export ; ses propres titres suivis ne sont jamais filtrés.
+  function hiddenList() {
+    try { return JSON.parse(localStorage.getItem("season.hidden") || "[]"); } catch { return []; }
+  }
+  let hiddenKeys = new Set(hiddenList().map((x) => x.key));
+  function setHiddenList(list) {
+    try { localStorage.setItem("season.hidden", JSON.stringify(list)); } catch {}
+    hiddenKeys = new Set(list.map((x) => x.key));
+  }
+  const isHidden = (key) => hiddenKeys.has(key);
+  function setHidden(item, on) {
+    const list = hiddenList().filter((x) => x.key !== item.key);
+    if (on) list.push({ key: item.key, title: item.title || "", poster: item.poster || "" });
+    setHiddenList(list);
+  }
+  // appui long sur un élément (sans gêner le tap) : sert à masquer une suggestion
+  function armLongPress(node, fn, ms = 550) {
+    let t = null, fired = false, sx = 0, sy = 0;
+    const clear = () => { clearTimeout(t); t = null; };
+    node.addEventListener("pointerdown", (e) => {
+      fired = false; sx = e.clientX; sy = e.clientY;
+      clear();
+      t = setTimeout(() => {
+        t = null;
+        fired = true;
+        if (navigator.vibrate) navigator.vibrate(12);
+        fn();
+      }, ms);
+    });
+    node.addEventListener("pointermove", (e) => {
+      if (Math.abs(e.clientX - sx) > 8 || Math.abs(e.clientY - sy) > 8) clear();
+    });
+    ["pointerup", "pointercancel", "pointerleave"].forEach((ty) => node.addEventListener(ty, clear));
+    // le clic qui suit l'appui long ne doit pas ouvrir la fiche
+    node.addEventListener("click", (e) => {
+      if (!fired) return;
+      fired = false;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }, true);
+  }
+
   function myProviders() {
     try { return JSON.parse(localStorage.getItem("season.providers") || "[]"); } catch { return []; }
   }
@@ -755,6 +800,26 @@
       paintFav();
       actions.append(favBtn);
     }
+    // ⊘ Pas intéressé : seulement sur une fiche qu'elle ne suit pas (ses propres
+    // titres ne sont de toute façon jamais proposés)
+    if (!saved) {
+      const hideBtn = el('<button class="fav-btn" type="button"><span class="fav-ico">⊘</span><span class="fav-lbl"></span></button>');
+      const item = { key: show.key, title: show.title, poster: show.poster };
+      const paintHide = () => {
+        const on = isHidden(show.key);
+        hideBtn.classList.toggle("is-on", on);
+        hideBtn.querySelector(".fav-lbl").textContent = on ? "Masqué — réafficher" : "Pas intéressé";
+        hideBtn.setAttribute("aria-pressed", on ? "true" : "false");
+      };
+      hideBtn.addEventListener("click", () => {
+        const on = !isHidden(show.key);
+        setHidden(item, on);
+        paintHide();
+        toast(on ? "Ne sera plus proposé" : "Proposé de nouveau");
+      });
+      paintHide();
+      actions.append(hideBtn);
+    }
     // ≡ Listes : marche aussi sur une fiche pas encore suivie (le titre est recopié)
     const picker = listPicker(show);
     const listsBtn = el('<button class="fav-btn" type="button"><span class="fav-ico">≡</span><span class="fav-lbl">Listes</span></button>');
@@ -994,7 +1059,7 @@
     return box;
   }
 
-  // ---- « Dans le même genre » : suggestions pas encore vues --------------
+  // ---- « Séries / Films similaires » : suggestions pas encore vues --------
   const relatedCache = new Map();
   function relatedSection(show) {
     const box = el('<div class="related"></div>');
@@ -1006,11 +1071,13 @@
       try {
         // on masque ce qui est vu ou commencé ; « à voir » reste (sans étiquette)
         const mine = new Map((await DB.allShows()).map((s) => [s.key, s.status]));
-        const hidden = (k) => k === show.key || mine.get(k) === "vu" || mine.get(k) === "en_cours";
+        const hidden = (k) => k === show.key || isHidden(k) ||
+          mine.get(k) === "vu" || mine.get(k) === "en_cours";
         const cacheKey = show.key + "|" + provs.map((p) => p.id).join(",");
         let data = relatedCache.get(cacheKey);
         if (!data) {
-          const skip = new Set([...mine.keys()].filter(hidden));
+          // on dit aussi à TMDB de sauter ce qu'elle a masqué : il propose autre chose
+          const skip = new Set([...[...mine.keys()].filter(hidden), ...hiddenKeys]);
           data = await TMDB.related(show.type, show.tmdbId || show.key.split(":")[1],
             { prov: provs.map((p) => p.id), skip });
           relatedCache.set(cacheKey, data);
@@ -1029,7 +1096,7 @@
           head.append(more);
           box.append(head);
           const r = el('<div class="reco-row no-caption"></div>');
-          list.forEach((x) => r.append(recoCard(x, provById)));
+          list.forEach((x) => r.append(recoCard(x, provById, { onHide: (y, card) => card.remove() })));
           box.append(r);
         };
         row(show.type === "tv" ? "Séries similaires" : "Films similaires", same);
@@ -1056,12 +1123,16 @@
     wrap.append(el(`<div class="poster-sub" style="margin:-4px 0 12px">${
       esc(title)} · d'après « ${esc(show.title)} »</div>`));
     const grid = el('<div class="poster-grid no-caption"></div>');
-    list.forEach((x) => grid.append(recoCard(x, provById)));
+    const draw = () => grid.replaceChildren(
+      ...list.filter((x) => !isHidden(`${x.type}:${x.tmdbId}`))
+        .map((x) => recoCard(x, provById, { onHide: () => draw() }))
+    );
+    draw();
     wrap.append(grid);
     render(wrap);
   }
 
-  function recoCard(x, provById = new Map()) {
+  function recoCard(x, provById = new Map(), { onHide } = {}) {
     // logo de la (1ʳᵉ) plateforme où le titre est dispo, parmi les siennes
     const p = (x.on || []).map((id) => provById.get(id)).find((q) => q && q.logo);
     const card = el(
@@ -1075,6 +1146,14 @@
       </button>`
     );
     card.addEventListener("click", () => go(() => renderDetail(`${x.type}:${x.tmdbId}`, x), x.title));
+    // appui long : « pas intéressé », la vignette disparaît tout de suite
+    if (onHide) {
+      armLongPress(card, () => {
+        setHidden({ key: `${x.type}:${x.tmdbId}`, title: x.title, poster: x.poster }, true);
+        toast("Pas intéressé — masqué des suggestions");
+        onHide(x, card);
+      });
+    }
     return card;
   }
 
@@ -1182,6 +1261,7 @@
     const byKey = new Map(all.map((s) => [s.key, s]));
     const keyOf = (x) => `${x.type}:${x.tmdbId}`;
     const hidden = (x) => {
+      if (isHidden(keyOf(x))) return true; // « pas intéressé »
       const s = byKey.get(keyOf(x));
       return !!s && (s.status === "vu" || s.status === "en_cours" || (s.tagsRemove || []).includes(themeId));
     };
@@ -1228,7 +1308,7 @@
         const seen = new Set();
         const vis = [...mineFirst, ...st.items.filter((x) => !hidden(x))]
           .filter((x) => !seen.has(keyOf(x)) && seen.add(keyOf(x)));
-        grid.replaceChildren(...vis.map((x) => recoCard(x, provById)));
+        grid.replaceChildren(...vis.map((x) => recoCard(x, provById, { onHide: () => paint() })));
         more.hidden = !left();
         if (!vis.length && more.hidden) {
           body.replaceChildren(el('<div class="empty">Aucun titre de ce thème à te proposer.</div>'));
@@ -1560,9 +1640,38 @@
     wrap.append(colsSeg);
     wrap.append(el('<p class="poster-sub" style="margin:-6px 0 8px">Auto = 2 sur téléphone, 3 sur un écran plus large.</p>'));
 
+    // --- titres marqués « pas intéressé » ---
+    const hiddenBox = el('<div></div>');
+    const drawHidden = () => {
+      const list = hiddenList();
+      hiddenBox.replaceChildren(el(
+        `<div class="section-title">Pas intéressé${list.length ? ` (${list.length})` : ""}</div>`
+      ));
+      if (!list.length) {
+        hiddenBox.append(el('<p class="poster-sub" style="margin-bottom:12px">Rien de masqué. ' +
+          "Appui long sur une suggestion (ou le bouton ⊘ d'une fiche) pour ne plus la voir proposée.</p>"));
+        return;
+      }
+      hiddenBox.append(el('<p class="poster-sub" style="margin-bottom:8px">Ces titres ne sont plus ' +
+        "proposés dans les suggestions ni les pages de thème. Touche un titre pour le réafficher.</p>"));
+      const pick = el('<div class="theme-pick"></div>');
+      for (const x of list) {
+        const b = el(`<button class="genre-tag is-on">${esc(x.title || x.key)} ✕</button>`);
+        b.addEventListener("click", () => {
+          setHidden(x, false);
+          toast("Proposé de nouveau");
+          drawHidden();
+        });
+        pick.append(b);
+      }
+      hiddenBox.append(pick);
+    };
+    drawHidden();
+    wrap.append(hiddenBox);
+
     wrap.append(el('<div class="section-title">Mes plateformes de streaming</div>'));
     wrap.append(el(
-      `<p class="poster-sub" style="margin-bottom:12px">Les suggestions « Dans le même genre » ne
+      `<p class="poster-sub" style="margin-bottom:12px">Les suggestions « Séries / Films similaires » ne
        montreront que ce que tu peux regarder sur ces plateformes (abonnement ou gratuit, en France).
        Rien de coché = toutes plateformes.</p>`
     ));
@@ -1905,7 +2014,7 @@
     const exp = el('<button class="link-btn">⤓ Exporter mes données (fichier)</button>');
     exp.addEventListener("click", async () => {
       const data = await DB.exportAll();
-      data.settings = { providers: myProviders(), cols: gridCols() };
+      data.settings = { providers: myProviders(), cols: gridCols(), hidden: hiddenList() };
       const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
@@ -1925,6 +2034,7 @@
         await DB.importAll(data);
         if (data.settings && Array.isArray(data.settings.providers)) setMyProviders(data.settings.providers);
         if (data.settings && data.settings.cols) setGridCols(String(data.settings.cols));
+        if (data.settings && Array.isArray(data.settings.hidden)) setHiddenList(data.settings.hidden);
         toast(`${data.shows.length} titres importés`);
         resetTo(renderSeries, "Séries", "listes");
       } catch {

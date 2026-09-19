@@ -195,6 +195,20 @@ Le dépôt public ne contient que la coquille de l'appli.
   écouté pour le clavier, ignoré s'il suit un relâchement déjà traité (`panDone`) ou
   un défilement (`panMoved`).
 
+### « Pas intéressé » (depuis le 20/09/2026)
+- Marque un titre pour qu'il ne soit **plus proposé** : suggestions de fiche
+  (« Séries / Films similaires », et la liste est passée à TMDB en `skip` pour qu'il
+  propose autre chose) et **pages de thème**. Ses propres titres suivis ne sont
+  jamais filtrés (ils ne sont de toute façon pas proposés).
+- Deux façons de le faire : **appui long** (~550 ms, petite vibration) sur une
+  vignette de suggestion — elle disparaît aussitôt, le tap normal ouvre toujours la
+  fiche (`armLongPress`, le clic qui suit l'appui long est avalé) — ou le bouton
+  **⊘ Pas intéressé** d'une fiche **pas encore suivie** (re-touche = réafficher).
+- Stocké dans `localStorage` `season.hidden` = `[{key,title,poster}]` (`hiddenKeys`,
+  `isHidden`, `setHidden`), **repris dans l'export** (`settings.hidden`).
+- **Réglages → « Pas intéressé (N) »** : la liste des titres masqués en pastilles,
+  un tap sur l'une d'elles la réaffiche.
+
 ### Réglages (bouton ⚙ en haut à droite)
 - **Vignettes par ligne** (grilles Séries / Films) : Auto · 2 · 3 · 4 · 5. `localStorage`
   `season.cols` → attribut `html[data-cols]` (CSS en fin d'`app.css`) ; Auto = règle
