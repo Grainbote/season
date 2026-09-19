@@ -114,6 +114,7 @@
     step();
   }
   function go(fn, title, { push = true } = {}) {
+    closeOverlay();
     navSeq++;
     pendingScroll = null;
     if (push && stack.length) {
@@ -128,6 +129,7 @@
     fn();
   }
   function back() {
+    if (closeOverlay()) return; // 1er retour : referme l'affiche en grand
     if (stack.length <= 1) return;
     navSeq++;
     stack.pop();
@@ -163,6 +165,10 @@
   else history.replaceState({ seasonRoot: true }, "");
   window.addEventListener("popstate", () => {
     trapArmed = false;
+    if (closeOverlay()) {
+      armBackTrap(); // l'affiche en grand se referme, on reste sur la fiche
+      return;
+    }
     if (stack.length > 1) {
       back(); // fiche / réglages → écran précédent
     } else if (currentTab !== "listes") {
@@ -675,7 +681,8 @@
     // tâche de fond : infos TMDB (> 12 h) puis épisodes d'une série (> 12 h)
     let changed = false;
     // (sans mots-clés = enregistrée avant les thèmes : on les récupère tout de suite)
-    if (staleMeta(show) || !Array.isArray(show.keywordIds)) {
+    // (sans bannière = enregistrée avant la nouvelle en-tête : on la complète)
+    if (staleMeta(show) || !Array.isArray(show.keywordIds) || show.backdrop === undefined) {
       try { await fetchMeta(show); await DB.putShow(show); changed = true; } catch {}
     }
     if (type === "tv" && staleMeta({ metaAt: show.epAt })) {
@@ -695,18 +702,40 @@
     const posterImg = show.poster
       ? `<img src="${TMDB.poster(show.poster)}" alt="">`
       : `<div class="poster-fallback">${esc(show.title)}</div>`;
-    const sub = [show.type === "tv" ? "Série" : "Film", show.year].filter(Boolean).join(" · ");
-
+    // en-tête façon Letterboxd : bannière en haut, affiche posée dessus à droite,
+    // gros titre, année · réalisation, durée et bande-annonce
+    const bd = show.backdrop ? TMDB.backdrop(show.backdrop) : null;
+    const kind = show.type === "tv" ? "Série" : "Film";
+    const dirLabel = show.type === "tv" ? "Créée par" : "Réalisé par";
+    const line1 = [kind, show.year].filter(Boolean).join(" · ");
+    const duree = show.type === "movie"
+      ? (show.runtime ? fmtDuration(show.runtime) : "")
+      : (show.epRunTime ? `${show.epRunTime} min / épisode` : "");
     wrap.append(el(
-      `<div class="detail-hero">
-        <div class="poster-wrap">${posterImg}</div>
-        <div>
+      `<div class="detail-hero${bd ? " has-bd" : ""}">
+        ${bd ? `<div class="hero-bd"><img src="${bd}" alt=""></div>` : ""}
+        <div class="hero-body">
+          <div class="poster-wrap">${posterImg}</div>
           <h2>${esc(show.title)}</h2>
-          <div class="sub">${esc(sub)}</div>
+          <div class="sub">${esc(line1)}${show.director
+            ? ` · <span class="hero-by">${dirLabel}</span><br><b>${esc(show.director)}</b>`
+            : ""}</div>
+          <div class="hero-line">
+            ${show.trailer
+              ? `<a class="trailer-btn" href="https://www.youtube.com/watch?v=${esc(show.trailer)}" target="_blank" rel="noopener">▶ Bande-annonce</a>`
+              : ""}
+            ${duree ? `<span class="hero-run">${esc(duree)}</span>` : ""}
+          </div>
           <div class="genres"></div>
         </div>
       </div>`
     ));
+    // l'affiche en grand quand on appuie dessus
+    const posterBox = wrap.querySelector(".detail-hero .poster-wrap");
+    if (show.poster) {
+      posterBox.classList.add("is-tappable");
+      posterBox.addEventListener("click", () => openPoster(show));
+    }
     // boutons sous le sous-titre : ♥ favori (fiche suivie) et ≡ Listes (toujours)
     const actions = el('<div class="detail-actions"></div>');
     if (saved) {
@@ -735,7 +764,7 @@
       if (!picker.box.hidden) picker.draw();
     });
     actions.append(listsBtn);
-    wrap.querySelector(".detail-hero .sub").after(actions);
+    wrap.querySelector(".detail-hero .hero-line").after(actions);
     wrap.querySelector(".detail-hero").after(picker.box);
     // thèmes (themes.js) → page des titres de ce thème pas encore vus, sur ses plateformes ;
     // fiche suivie : ✎ pour corriger à la main (ajouts / retraits prioritaires sur l'auto)
@@ -777,6 +806,7 @@
     drawTags();
     wrap.append(editor);
 
+    if (show.tagline) wrap.append(el(`<div class="tagline">${esc(show.tagline)}</div>`));
     if (show.overview) wrap.append(el(`<p class="overview">${esc(show.overview)}</p>`));
     wrap.append(whereToWatchSection(show));
 
@@ -875,6 +905,28 @@
     wrap.append(del);
 
     return wrap;
+  }
+
+  // ---- affiche en grand ---------------------------------------------------
+  // Superposition plein écran ; un tap ou le bouton retour d'Android la referme.
+  let posterOverlay = null;
+  function closeOverlay() {
+    if (!posterOverlay) return false;
+    posterOverlay.remove();
+    posterOverlay = null;
+    return true;
+  }
+  function openPoster(show) {
+    closeOverlay();
+    const box = el(
+      `<div class="poster-full" role="dialog" aria-label="${esc(show.title)}">
+        <img src="${TMDB.poster(show.poster, "w780")}" alt="${esc(show.title)}">
+        <button class="poster-full-close" aria-label="Fermer">✕</button>
+      </div>`
+    );
+    box.addEventListener("click", closeOverlay);
+    document.body.append(box);
+    posterOverlay = box;
   }
 
   // ---- « Où regarder » (fiche) --------------------------------------------

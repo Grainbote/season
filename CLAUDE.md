@@ -69,7 +69,21 @@ Le dépôt public ne contient que la coquille de l'appli.
   une série coche tous ses épisodes, sans confirmation puisqu'elle vient de choisir).
 
 ### Fiche
-- Affiche, année, résumé. **Thèmes = pastilles cliquables** (`.genre-tag`) → page thème (voir Thèmes).
+- **Présentation façon Letterboxd** (depuis le 20/09/2026, sur sa capture d'écran) :
+  **bannière** en haut (`show.backdrop`, `TMDB.backdrop`, pleine largeur via des marges
+  négatives, dégradé vers le fond), **affiche posée dessus à droite** (flottante, le
+  texte l'habille), **gros titre**, `Film|Série · année · RÉALISÉ PAR / CRÉÉE PAR` +
+  nom, ligne **▶ Bande-annonce** (lien YouTube) et durée, puis ♥ / ≡ Listes, pastilles
+  de thèmes, **accroche** (`tagline`, en capitales) et résumé.
+- Champs TMDB ajoutés le 20/09/2026 : `backdrop`, `tagline`, `director` (films :
+  `credits` job *Director* ; séries : `created_by`), `trailer` (clé YouTube,
+  `append_to_response=…,videos`, `include_video_language=fr,en`). Une fiche
+  enregistrée avant (`show.backdrop === undefined`) est **complétée en tâche de fond**
+  à l'ouverture, comme les mots-clés, puis redessinée sur place.
+- **Affiche en grand** : un tap sur l'affiche ouvre une superposition plein écran
+  (`openPoster`, image en `w780`) ; un tap, la croix, ou le bouton retour d'Android la
+  referment sans quitter la fiche (`closeOverlay` appelé par `popstate`, `go` et `back`).
+- **Thèmes = pastilles cliquables** (`.genre-tag`) → page thème (voir Thèmes).
 
 ### Thèmes (`themes.js`, depuis le 18/09/2026 — remplacent les genres TMDB)
 - **Pourquoi** : TMDB n'a **pas de genre Romance côté séries** (Off Campus = « Drame »,
@@ -272,8 +286,8 @@ chaque retour géré. Avant (jusqu'au 18/09/2026), retour fermait l'appli.
 - `shows`, clé `key` = `tv:<tmdbId>` ou `movie:<tmdbId>` : `type`, `title`, `year`,
   `poster`, `overview`, `genres[]`, `status`, `rating`, `review`, `seasons[]`
   (`{number,name,count}`), `totalEpisodes`, `watchedEpisodes`, `epRunTime`,
-  `runtime` (film), `watchedMovie`, `favorite`, `popularity`, `createdAt`, `updatedAt`,
-  `metaAt`, `epAt`.
+  `runtime` (film), `watchedMovie`, `favorite`, `popularity`, `backdrop`, `tagline`,
+  `director`, `trailer`, `createdAt`, `updatedAt`, `metaAt`, `epAt`.
 - `lists`, clé `id` = `list:<horodatage>-<aléa>` : `name`, `description`, `items[]`
   (`{type,tmdbId,title,year,poster}`), `createdAt`, `updatedAt`.
 - `episodes`, clé `key` = `tv:<id>:<saison>:<épisode>`, index `byShow` :

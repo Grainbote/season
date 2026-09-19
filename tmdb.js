@@ -29,11 +29,20 @@ window.TMDB = (() => {
   Object.assign(GENRE_BRIDGE.movie, { 28: [10759], 12: [10759], 878: [10765], 14: [10765], 10752: [10768], 53: [9648] });
 
   const poster = (p, size = "w342") => (p ? `${IMG}/${size}${p}` : null);
+  const backdrop = (p, size = "w780") => (p ? `${IMG}/${size}${p}` : null);
+
+  // 1ʳᵉ bande-annonce YouTube de la fiche (sa clé), pour le bouton de la fiche
+  function pickTrailer(videos) {
+    const list = ((videos || {}).results || []).filter((v) => v.site === "YouTube");
+    const best = list.find((v) => v.type === "Trailer") || list.find((v) => v.type === "Teaser") || list[0];
+    return best ? best.key : "";
+  }
   const still = (p) => (p ? `${IMG}/w300${p}` : null);
 
   return {
     hasKey,
     poster,
+    backdrop,
     still,
     logo: (p) => (p ? `${IMG}/w92${p}` : null),
 
@@ -85,7 +94,10 @@ window.TMDB = (() => {
     },
 
     async movie(id) {
-      const d = await call(`/movie/${id}`, { append_to_response: "keywords" });
+      const d = await call(`/movie/${id}`, {
+        append_to_response: "keywords,credits,videos",
+        include_video_language: "fr,en",
+      });
       return {
         key: "movie:" + id,
         type: "movie",
@@ -94,6 +106,11 @@ window.TMDB = (() => {
         year: (d.release_date || "").slice(0, 4),
         overview: d.overview,
         poster: d.poster_path,
+        backdrop: d.backdrop_path || "", // bannière de la fiche
+        tagline: d.tagline || "",
+        director: ((d.credits || {}).crew || [])
+          .filter((c) => c.job === "Director").map((c) => c.name).slice(0, 2).join(", "),
+        trailer: pickTrailer(d.videos),
         genres: (d.genres || []).map((g) => g.name),
         genreIds: (d.genres || []).map((g) => g.id),
         keywordIds: ((d.keywords || {}).keywords || []).map((k) => k.id), // → thèmes (themes.js)
@@ -103,7 +120,10 @@ window.TMDB = (() => {
     },
 
     async tv(id) {
-      const d = await call(`/tv/${id}`, { append_to_response: "keywords" });
+      const d = await call(`/tv/${id}`, {
+        append_to_response: "keywords,videos",
+        include_video_language: "fr,en",
+      });
       return {
         key: "tv:" + id,
         type: "tv",
@@ -112,6 +132,10 @@ window.TMDB = (() => {
         year: (d.first_air_date || "").slice(0, 4),
         overview: d.overview,
         poster: d.poster_path,
+        backdrop: d.backdrop_path || "", // bannière de la fiche
+        tagline: d.tagline || "",
+        director: (d.created_by || []).map((c) => c.name).slice(0, 2).join(", "),
+        trailer: pickTrailer(d.videos),
         genres: (d.genres || []).map((g) => g.name),
         genreIds: (d.genres || []).map((g) => g.id),
         keywordIds: ((d.keywords || {}).results || []).map((k) => k.id), // → thèmes (themes.js)

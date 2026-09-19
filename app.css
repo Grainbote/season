@@ -507,15 +507,87 @@ img { max-width: 100%; }
 }
 
 /* ---- Fiche ---- */
+/* En-tête de fiche façon Letterboxd : bannière pleine largeur, affiche posée
+   dessus à droite (flottante, le texte l'habille), gros titre, réalisation. */
 .detail-hero {
-  display: flex;
-  gap: 14px;
-  margin-bottom: 18px;
+  position: relative;
+  margin: -14px -14px 18px; /* déborde le padding de #view */
 }
-.detail-hero .poster-wrap { width: 118px; flex: none; }
-.detail-hero h2 { font-size: 20px; font-weight: 700; line-height: 1.2; }
-.detail-hero .sub { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
-.detail-hero .genres { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.hero-bd { position: relative; height: 200px; overflow: hidden; }
+.hero-bd img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hero-bd::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, #0f101533 0%, #0f1015aa 58%, var(--bg) 100%);
+}
+.hero-body { position: relative; padding: 0 14px; }
+.hero-body::after { content: ""; display: block; clear: both; }
+.detail-hero.has-bd .hero-body { margin-top: -58px; }
+.detail-hero .poster-wrap {
+  width: 108px;
+  float: right;
+  margin: 0 0 10px 14px;
+  border-radius: 8px;
+  box-shadow: 0 8px 22px #000000aa;
+}
+.detail-hero.has-bd .poster-wrap { margin-top: -96px; }
+.poster-wrap.is-tappable { cursor: zoom-in; }
+.detail-hero h2 { font-size: 25px; font-weight: 800; line-height: 1.12; }
+.detail-hero .sub { font-size: 12px; color: var(--text-dim); margin-top: 8px; line-height: 1.55; }
+.detail-hero .sub .hero-by { text-transform: uppercase; letter-spacing: 0.6px; }
+.detail-hero .sub b { color: var(--text); font-size: 14px; }
+.hero-line { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
+.hero-line:empty { margin-top: 0; }
+.trailer-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: var(--bg-elev-2);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-decoration: none;
+}
+.hero-run { font-size: 12px; color: var(--text-dim); }
+.detail-hero .genres { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.tagline {
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+
+/* ---- Affiche en grand (tap sur l'affiche d'une fiche) ---- */
+.poster-full {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: #000000e8;
+}
+.poster-full img { max-width: 100%; max-height: 100%; border-radius: 10px; display: block; }
+.poster-full-close {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 10px);
+  right: 12px;
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 50%;
+  background: #ffffff1f;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+}
 /* genres cliquables → page « titres de ce genre » */
 .genre-tag {
   background: var(--bg-elev); border: 1px solid var(--line); color: var(--text);
