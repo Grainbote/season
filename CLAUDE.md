@@ -84,6 +84,11 @@ Le dépôt public ne contient que la coquille de l'appli.
   (`openPoster`, image en `w780`) ; un tap, la croix, ou le bouton retour d'Android la
   referment sans quitter la fiche (`closeOverlay` appelé par `popstate`, `go` et `back`).
 - **Thèmes = pastilles cliquables** (`.genre-tag`) → page thème (voir Thèmes).
+- **Suggestions façon Letterboxd** (depuis le 20/09/2026) : sections « Séries
+  similaires » / « Films similaires » (avant : « Dans le même genre · … »), titre de
+  section avec **« Tout voir »** à droite (`.section-head`) et rangée d'**affiches
+  seules** qui défile (`.reco-row.no-caption` ; le titre reste en `aria-label`).
+  « Tout voir » ouvre `renderSimilaires` : la même liste en grille.
 
 ### Thèmes (`themes.js`, depuis le 18/09/2026 — remplacent les genres TMDB)
 - **Pourquoi** : TMDB n'a **pas de genre Romance côté séries** (Off Campus = « Drame »,

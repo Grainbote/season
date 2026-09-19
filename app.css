@@ -622,6 +622,9 @@ img { max-width: 100%; }
   color: var(--text-dim);
   margin: 20px 0 10px;
 }
+/* titre de section + lien à droite (rangées de suggestions) */
+.section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.section-head .link-btn { flex: none; }
 
 .stars { display: flex; align-items: center; gap: 4px; font-size: 30px; color: var(--line); }
 .stars span { cursor: pointer; line-height: 1; }
@@ -800,7 +803,9 @@ html[data-cols="5"] .poster-grid .poster-wrap { border-radius: 7px; }
 
 /* onglets Séries et Films : affiches sans légende (titre, x/y épisodes, « Film ») */
 .poster-grid.no-caption .poster-title,
-.poster-grid.no-caption .poster-sub { display: none; }
+.poster-grid.no-caption .poster-sub,
+.reco-row.no-caption .poster-title,
+.reco-row.no-caption .poster-sub { display: none; }
 /* onglets Séries et Films : affiches à angles droits (demandé le 18/09/2026) */
 html .poster-grid .poster-wrap { border-radius: 0; }
 

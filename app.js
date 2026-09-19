@@ -1019,15 +1019,21 @@
         const same = keep(data.same);
         const cross = keep(data.cross);
         box.replaceChildren();
+        // façon Letterboxd : titre de section + « Tout voir » à droite, puis une
+        // rangée d'affiches seules qui défile (le titre reste en `aria-label`)
         const row = (title, list) => {
           if (!list.length) return;
-          box.append(el(`<div class="section-title">${title}</div>`));
-          const r = el('<div class="reco-row"></div>');
+          const head = el(`<div class="section-head"><div class="section-title">${title}</div></div>`);
+          const more = el('<button class="link-btn">Tout voir</button>');
+          more.addEventListener("click", () => go(() => renderSimilaires(show, title, list), title));
+          head.append(more);
+          box.append(head);
+          const r = el('<div class="reco-row no-caption"></div>');
           list.forEach((x) => r.append(recoCard(x, provById)));
           box.append(r);
         };
-        row(`Dans le même genre · ${show.type === "tv" ? "séries" : "films"}`, same);
-        row(`Dans le même genre · ${show.type === "tv" ? "films" : "séries"}`, cross);
+        row(show.type === "tv" ? "Séries similaires" : "Films similaires", same);
+        row(show.type === "tv" ? "Films similaires" : "Séries similaires", cross);
         const none = !same.length && !cross.length;
         const note = provs.length
           ? `${none ? "Aucune suggestion sur tes plateformes. " : "Seulement sur tes plateformes. "}`
@@ -1041,6 +1047,18 @@
       }
     })();
     return box;
+  }
+
+  // « Tout voir » d'une rangée de suggestions : la même liste, en grille
+  function renderSimilaires(show, title, list) {
+    const provById = new Map(myProviders().map((p) => [p.id, p]));
+    const wrap = el('<div></div>');
+    wrap.append(el(`<div class="poster-sub" style="margin:-4px 0 12px">${
+      esc(title)} · d'après « ${esc(show.title)} »</div>`));
+    const grid = el('<div class="poster-grid no-caption"></div>');
+    list.forEach((x) => grid.append(recoCard(x, provById)));
+    wrap.append(grid);
+    render(wrap);
   }
 
   function recoCard(x, provById = new Map()) {
