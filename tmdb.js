@@ -49,13 +49,21 @@ window.TMDB = (() => {
     // une page de titres d'un thème (themes.js), les plus populaires d'abord :
     // `genres` OU `keywords` (une requête par critère, fusionnées côté appli) ;
     // `prov` = seulement l'abonnement / gratuit sur ces plateformes (pas de location)
-    async discoverPage(type, { genres = [], keywords = [], without = [] }, { prov = [], page = 1 } = {}) {
+    // `sort` : "popularity.desc" (défaut), "vote_average.desc" (on relève alors le
+    // nombre de votes minimum, sinon on remonte des inconnus notés 10/10), ou une
+    // date de sortie — le champ de date n'a pas le même nom côté films et séries.
+    async discoverPage(type, { genres = [], keywords = [], without = [] },
+      { prov = [], page = 1, sort = "popularity.desc" } = {}) {
+      const dateField = type === "tv" ? "first_air_date" : "primary_release_date";
+      const sortBy = sort.startsWith("date.") ? `${dateField}.${sort.slice(5)}` : sort;
       const d = await call(`/discover/${type}`, {
         ...(genres.length ? { with_genres: genres.join("|") } : {}),
         ...(keywords.length ? { with_keywords: keywords.join("|") } : {}),
         ...(without.length ? { without_genres: without.join(",") } : {}),
-        sort_by: "popularity.desc",
-        "vote_count.gte": "20",
+        sort_by: sortBy,
+        // tri par date : pas de titres qui ne sont pas encore sortis
+        ...(sort.startsWith("date.") ? { [`${dateField}.lte`]: new Date().toISOString().slice(0, 10) } : {}),
+        "vote_count.gte": sortBy.startsWith("vote_average") ? "300" : "20",
         include_adult: "false",
         page: String(page),
         ...(prov.length
@@ -73,6 +81,8 @@ window.TMDB = (() => {
           overview: x.overview,
           poster: x.poster_path,
           popularity: x.popularity || 0,
+          voteAverage: x.vote_average || 0,
+          date: x.release_date || x.first_air_date || "",
         })),
       };
     },

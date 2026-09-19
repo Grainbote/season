@@ -450,10 +450,10 @@
     return bar;
   }
   // barre de tri commune (Séries / Films / Favoris)
-  function sortBar(current, onChange) {
+  function sortBar(current, onChange, choices = SORTS) {
     const bar = el('<div class="sort-bar"><label>Trier :</label><select></select></div>');
     const sel = bar.querySelector("select");
-    for (const [k, label] of Object.entries(SORTS)) {
+    for (const [k, label] of Object.entries(choices)) {
       const o = el(`<option value="${k}">${label}</option>`);
       if (k === current) o.selected = true;
       sel.append(o);
@@ -1087,8 +1087,29 @@
   }
 
   // ---- THÈME : titres d'un thème (themes.js) pas encore vus, sur ses plateformes ----
-  const themeCache = new Map(); // "type|thème|plateformes" → { items, sources }
+  const themeCache = new Map(); // "type|thème|plateformes|tri" → { items, sources }
   const themeTab = new Map(); // onglet Séries/Films choisi, par page de thème
+  // tri de la page d'un thème : demandé à TMDB (`sort_by`), et rejoué côté appli pour
+  // fusionner les critères (genres, mots-clés) d'une même « page »
+  const THEME_SORTS = {
+    populaire: "Populaires",
+    note: "Mieux notés",
+    recent: "Plus récents",
+    ancien: "Plus anciens",
+  };
+  const THEME_SORT_BY = {
+    populaire: "popularity.desc",
+    note: "vote_average.desc",
+    recent: "date.desc",
+    ancien: "date.asc",
+  };
+  const THEME_CMP = {
+    populaire: (a, b) => (b.popularity || 0) - (a.popularity || 0),
+    note: (a, b) => (b.voteAverage || 0) - (a.voteAverage || 0),
+    recent: (a, b) => String(b.date || "").localeCompare(String(a.date || "")),
+    ancien: (a, b) => String(a.date || "9999").localeCompare(String(b.date || "9999")),
+  };
+  let themeSort = localStorage.getItem("season.themeSort") || "populaire";
   async function renderTheme(fromType, themeId) {
     const theme = THEMES.get(themeId);
     const seq = navSeq;
@@ -1120,6 +1141,11 @@
       });
       wrap.append(row);
     }
+    wrap.append(sortBar(themeSort, (v) => {
+      themeSort = v;
+      try { localStorage.setItem("season.themeSort", v); } catch {}
+      renderTheme(fromType, themeId); // même écran, rechargé avec le nouveau tri
+    }, THEME_SORTS));
     wrap.append(note, body);
     render(wrap);
 
@@ -1168,7 +1194,7 @@
         body.append(el(`<div class="empty">Rien de ce thème côté ${type === "tv" ? "séries" : "films"}.</div>`));
         return;
       }
-      const ck = `${type}|${themeId}|${provIds.join(",")}`;
+      const ck = `${type}|${themeId}|${provIds.join(",")}|${themeSort}`;
       if (!themeCache.has(ck)) {
         themeCache.set(ck, { items: [], sources: sources.map((c) => ({ c, page: 0, total: 1 })) });
       }
@@ -1200,7 +1226,8 @@
         try {
           for (let n = 0; n < 5 && left(); n++) {
             const got = await Promise.all(st.sources.filter((s) => s.page < s.total).map(async (s) => {
-              const r = await TMDB.discoverPage(type, s.c, { prov: provIds, page: s.page + 1 });
+              const r = await TMDB.discoverPage(type, s.c,
+                { prov: provIds, page: s.page + 1, sort: THEME_SORT_BY[themeSort] });
               s.page++;
               s.total = r.totalPages;
               return r.results;
@@ -1208,7 +1235,7 @@
             const have = new Set(st.items.map((x) => x.tmdbId));
             const batch = got.flat()
               .filter((x) => !have.has(x.tmdbId) && have.add(x.tmdbId))
-              .sort((a, b) => b.popularity - a.popularity);
+              .sort(THEME_CMP[themeSort] || THEME_CMP.populaire);
             // /discover filtre déjà par plateforme, mais on revérifie titre par titre :
             // ça écarte les rares faux positifs et donne le logo de la plateforme
             st.items.push(...(provs.length ? await onlyOnMyProviders(batch, provIds) : batch));

@@ -108,6 +108,13 @@ Le dépôt public ne contient que la coquille de l'appli.
   sous-thèmes** (ou « ↑ Tout Romance » + voisins depuis un sous-thème), note plateformes.
   Critères `THEMES.findFor` : par défaut genres OU mots-clés (une requête `/discover`
   chacun, `TMDB.discoverPage`, fusion par popularité).
+- **Tri de la page d'un thème** (depuis le 20/09/2026, `THEME_SORTS`, retenu dans
+  `localStorage` `season.themeSort`) : *Populaires* (défaut), *Mieux notés*, *Plus
+  récents*, *Plus anciens*. Le tri est demandé à TMDB (`sort_by`) **et** rejoué côté
+  appli (`THEME_CMP`) pour fusionner les critères d'une même page. *Mieux notés* relève
+  le minimum de votes à 300 (sinon des inconnus notés 10/10 remontent) ; les tris par
+  date excluent ce qui n'est pas encore sorti (`<date>.lte = aujourd'hui`). Le tri fait
+  partie de la clé du cache `themeCache`.
 - **Seulement ce qui est dispo sur ses plateformes** (depuis le 20/09/2026, à sa
   demande) : `/discover` filtre déjà (`with_watch_providers`, abonnement / gratuit /
   pub), et chaque titre est **revérifié un par un** (`/watch/providers` via
