@@ -895,7 +895,7 @@
     const provById = new Map(provs.map((p) => [p.id, p]));
     (async () => {
       try {
-        // on masque ce qui est vu ou commencé ; « à voir » reste, avec un repère
+        // on masque ce qui est vu ou commencé ; « à voir » reste (sans étiquette)
         const mine = new Map((await DB.allShows()).map((s) => [s.key, s.status]));
         const hidden = (k) => k === show.key || mine.get(k) === "vu" || mine.get(k) === "en_cours";
         const cacheKey = show.key + "|" + provs.map((p) => p.id).join(",");
@@ -914,7 +914,7 @@
           if (!list.length) return;
           box.append(el(`<div class="section-title">${title}</div>`));
           const r = el('<div class="reco-row"></div>');
-          list.forEach((x) => r.append(recoCard(x, mine.get(`${x.type}:${x.tmdbId}`), provById)));
+          list.forEach((x) => r.append(recoCard(x, provById)));
           box.append(r);
         };
         row(`Dans le même genre · ${show.type === "tv" ? "séries" : "films"}`, same);
@@ -934,13 +934,12 @@
     return box;
   }
 
-  function recoCard(x, status, provById = new Map()) {
+  function recoCard(x, provById = new Map()) {
     // logo de la (1ʳᵉ) plateforme où le titre est dispo, parmi les siennes
     const p = (x.on || []).map((id) => provById.get(id)).find((q) => q && q.logo);
     const card = el(
       `<button class="poster-card reco-card" aria-label="${esc(x.title)}">
         <div class="poster-wrap">
-          ${status ? '<span class="badge-type badge-list">À voir</span>' : ""}
           <img loading="lazy" src="${TMDB.poster(x.poster, "w185")}" alt="">
           ${p ? `<img class="prov-logo" src="${TMDB.logo(p.logo)}" alt="${esc(p.name)}" title="${esc(p.name)}">` : ""}
         </div>
@@ -950,6 +949,32 @@
     );
     card.addEventListener("click", () => go(() => renderDetail(`${x.type}:${x.tmdbId}`, x), x.title));
     return card;
+  }
+
+  // ---- disponibilité sur ses plateformes -------------------------------
+  // `/watch/providers` d'un titre, gardé le temps de la session (une seule requête
+  // par titre) ; sert à ne garder que ce qu'elle peut vraiment regarder.
+  const availCache = new Map(); // "type:id" → ids de plateformes (abonnement / gratuit)
+  async function availableOn(x) {
+    const k = `${x.type}:${x.tmdbId}`;
+    if (!availCache.has(k)) {
+      availCache.set(k, await TMDB.availableOn(x.type, x.tmdbId).catch(() => []));
+    }
+    return availCache.get(k);
+  }
+  // ne garde que les titres dispo sur une de ses plateformes, annotés `on`
+  // (paquets de 8 requêtes, comme les suggestions de fiche)
+  async function onlyOnMyProviders(list, provIds) {
+    const want = new Set(provIds);
+    const out = [];
+    for (let i = 0; i < list.length; i += 8) {
+      const part = await Promise.all(list.slice(i, i + 8).map(async (x) => {
+        const on = (await availableOn(x)).filter((id) => want.has(id));
+        return on.length ? { ...x, on } : null;
+      }));
+      out.push(...part.filter(Boolean));
+    }
+    return out;
   }
 
   // ---- THÈME : titres d'un thème (themes.js) pas encore vus, sur ses plateformes ----
@@ -1008,21 +1033,33 @@
       return !!s && (s.status === "vu" || s.status === "en_cours" || (s.tagsRemove || []).includes(themeId));
     };
 
+    const provById = new Map(provs.map((p) => [p.id, p]));
+    const provIds = provs.map((p) => p.id);
     const showType = (type) => {
       themeTab.set(viewKey, type);
       seg.querySelectorAll("button").forEach((b) => b.classList.toggle("is-active", b.dataset.t === type));
       body.replaceChildren();
       const sources = THEMES.findFor(theme, type);
       // ses « à voir » de ce thème (auto ou ajouté à la main), en premier
-      const mineFirst = all
+      const mineAll = all
         .filter((s) => s.type === type && s.status === "a_voir" && s.poster &&
           THEMES.themesOf(s).some((t) => t.id === themeId))
         .map((s) => ({ type: s.type, tmdbId: s.tmdbId, title: s.title, year: s.year, poster: s.poster }));
-      if (!sources.length && !mineFirst.length) {
+      // comme les titres proposés (filtrés par /discover), ses « à voir » ne sont
+      // montrés que s'ils sont sur une de ses plateformes — vérifié titre par titre
+      let mineFirst = provs.length ? [] : mineAll;
+      if (provs.length && mineAll.length) {
+        onlyOnMyProviders(mineAll, provIds).then((ok) => {
+          if (!still() || themeTab.get(viewKey) !== type) return;
+          mineFirst = ok;
+          paint();
+        });
+      }
+      if (!sources.length && !mineAll.length) {
         body.append(el(`<div class="empty">Rien de ce thème côté ${type === "tv" ? "séries" : "films"}.</div>`));
         return;
       }
-      const ck = `${type}|${themeId}|${provs.map((p) => p.id).join(",")}`;
+      const ck = `${type}|${themeId}|${provIds.join(",")}`;
       if (!themeCache.has(ck)) {
         themeCache.set(ck, { items: [], sources: sources.map((c) => ({ c, page: 0, total: 1 })) });
       }
@@ -1032,17 +1069,15 @@
       body.append(grid, more);
       const left = () => st.sources.some((s) => s.page < s.total);
 
-      let shownKeys = new Set();
+      // la grille est redessinée d'un bloc : ses « à voir » arrivent après coup
+      // (vérification des plateformes) et doivent rester en tête
       const paint = () => {
-        const vis = [...mineFirst, ...st.items.filter((x) => !hidden(x))];
-        for (const x of vis) {
-          const k = keyOf(x);
-          if (shownKeys.has(String(k))) continue;
-          shownKeys.add(String(k));
-          grid.append(recoCard(x, byKey.get(k) ? byKey.get(k).status : null));
-        }
+        const seen = new Set();
+        const vis = [...mineFirst, ...st.items.filter((x) => !hidden(x))]
+          .filter((x) => !seen.has(keyOf(x)) && seen.add(keyOf(x)));
+        grid.replaceChildren(...vis.map((x) => recoCard(x, provById)));
         more.hidden = !left();
-        if (!shownKeys.size && more.hidden) {
+        if (!vis.length && more.hidden) {
           body.replaceChildren(el('<div class="empty">Aucun titre de ce thème à te proposer.</div>'));
         }
       };
@@ -1056,7 +1091,7 @@
         try {
           for (let n = 0; n < 5 && left(); n++) {
             const got = await Promise.all(st.sources.filter((s) => s.page < s.total).map(async (s) => {
-              const r = await TMDB.discoverPage(type, s.c, { prov: provs.map((p) => p.id), page: s.page + 1 });
+              const r = await TMDB.discoverPage(type, s.c, { prov: provIds, page: s.page + 1 });
               s.page++;
               s.total = r.totalPages;
               return r.results;
@@ -1065,7 +1100,9 @@
             const batch = got.flat()
               .filter((x) => !have.has(x.tmdbId) && have.add(x.tmdbId))
               .sort((a, b) => b.popularity - a.popularity);
-            st.items.push(...batch);
+            // /discover filtre déjà par plateforme, mais on revérifie titre par titre :
+            // ça écarte les rares faux positifs et donne le logo de la plateforme
+            st.items.push(...(provs.length ? await onlyOnMyProviders(batch, provIds) : batch));
             if (visCount() - before >= 18) break;
           }
         } catch {

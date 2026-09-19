@@ -255,14 +255,6 @@ img { max-width: 100%; }
   background: #00000066;
 }
 .progress-bar > i { display: block; height: 100%; background: var(--accent); }
-.badge-type {
-  position: absolute; top: 6px; left: 6px;
-  font-size: 10px; font-weight: 700;
-  background: #000000aa; color: #fff;
-  padding: 2px 6px; border-radius: 6px;
-  text-transform: uppercase; letter-spacing: 0.4px;
-}
-
 /* ---- Suggestions « dans le même genre » (fiche) ---- */
 .reco-row {
   display: flex;
@@ -278,7 +270,6 @@ img { max-width: 100%; }
 .reco-card { flex: 0 0 104px; width: 104px; scroll-snap-align: start; }
 /* mêmes vignettes dans une grille (page genre) : elles remplissent leur colonne */
 .poster-grid .reco-card { flex: none; width: 100%; }
-.badge-list { background: var(--accent); color: var(--on-accent); }
 .prov-logo {
   position: absolute; right: 5px; bottom: 5px;
   width: 24px !important; height: 24px !important;

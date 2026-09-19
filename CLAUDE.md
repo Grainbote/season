@@ -86,11 +86,22 @@ Le dépôt public ne contient que la coquille de l'appli.
 - **Page thème** (`renderTheme(fromType, themeId)`) : Séries / Films, **pastilles des
   sous-thèmes** (ou « ↑ Tout Romance » + voisins depuis un sous-thème), note plateformes.
   Critères `THEMES.findFor` : par défaut genres OU mots-clés (une requête `/discover`
-  chacun, `TMDB.discoverPage`, fusion par popularité). **Romance plus stricte** (`find`) :
+  chacun, `TMDB.discoverPage`, fusion par popularité).
+- **Seulement ce qui est dispo sur ses plateformes** (depuis le 20/09/2026, à sa
+  demande) : `/discover` filtre déjà (`with_watch_providers`, abonnement / gratuit /
+  pub), et chaque titre est **revérifié un par un** (`/watch/providers` via
+  `availableOn` + `onlyOnMyProviders`, paquets de 8, cache session `availCache`) →
+  faux positifs écartés et **logo de la plateforme** sur chaque affiche. Ses
+  « à voir » mis en tête passent **le même filtre** (avant, ils s'affichaient quelle
+  que soit la plateforme — c'est ce qu'elle voyait). Sans plateforme choisie :
+  rien n'est filtré, comme avant. La grille est redessinée d'un bloc à chaque
+  `paint()` (ses « à voir » arrivent après la vérification et restent en tête). **Romance plus stricte** (`find`) :
   films = genre Romance seul ; séries = mots-clés romance nets **sans** Crime / Animation /
   Action / Kids (sinon Spider-Man, Better Call Saul… passaient devant). En tête : ses
   « à voir » du thème (auto ou ajouté) ; vus / en cours masqués ; thème retiré à la main
   → titre exclu. « Voir plus », cache session `themeCache`, onglet retenu `themeTab`.
+  **Plus d'étiquette « À voir »** sur les affiches (retirée le 20/09/2026, `recoCard`
+  n'a plus de paramètre `status` ; styles `.badge-type` / `.badge-list` supprimés).
 ### Onglet Favoris (depuis le 20/09/2026)
 - Placé **après Recherche**. Liste les fiches marquées `show.favorite`.
 - Marquage : bouton **♥ Ajouter aux favoris / ♥ Favori** sur la fiche (sous le
