@@ -55,6 +55,14 @@ Le dépôt public ne contient que la coquille de l'appli.
   `updatedAt`** (sinon le tri « Vu récemment » serait chamboulé). `show.lastWatchedAt` est tenu à jour par `recomputeAndSave` mais
   le tri « vu récemment » recalcule depuis `DB.allEpisodes()` pour couvrir les
   données importées.
+- **« Sur mes plateformes seulement »** (depuis le 20/09/2026) : pastille affichée
+  **uniquement dans « À voir »** et seulement si des plateformes sont choisies
+  (`localStorage` `season.onlyMine`). La disponibilité est **gardée sur la fiche**
+  (`show.avail` = toutes les plateformes où le titre passe, `show.availAt` = date du
+  relevé, revérifié au bout d'**une semaine**, `AVAIL_TTL`) : ce qui est déjà relevé
+  s'affiche tout de suite, le reste se vérifie à la demande (« ↻ Vérifier », une
+  requête par titre, paquets de 12, `fillAvailability` + `DB.putShowQuiet` pour ne pas
+  toucher `updatedAt`). Changer de plateformes ne redemande rien (on refiltre `avail`).
 - Grille d'affiches. **Onglets Séries et Films : affiches seules** (titre, `x/y épisodes`
   et « Film » masqués via `.poster-grid.no-caption`, demandé le 18/09/2026), barre de
   progression gardée sur l'affiche des séries ; titre en `aria-label`. Affiches des deux onglets à **angles droits** (pas d'arrondi) et **sans étiquette Série/Film** (inutile, déjà rangé par onglet) — 18/09/2026.
@@ -313,7 +321,8 @@ chaque retour géré. Avant (jusqu'au 18/09/2026), retour fermait l'appli.
   `poster`, `overview`, `genres[]`, `status`, `rating`, `review`, `seasons[]`
   (`{number,name,count}`), `totalEpisodes`, `watchedEpisodes`, `epRunTime`,
   `runtime` (film), `watchedMovie`, `favorite`, `popularity`, `backdrop`, `tagline`,
-  `director`, `trailer`, `createdAt`, `updatedAt`, `metaAt`, `epAt`.
+  `director`, `trailer`, `avail`/`availAt` (plateformes relevées), `createdAt`,
+  `updatedAt`, `metaAt`, `epAt`.
 - `lists`, clé `id` = `list:<horodatage>-<aléa>` : `name`, `description`, `items[]`
   (`{type,tmdbId,title,year,poster}`), `createdAt`, `updatedAt`.
 - `episodes`, clé `key` = `tv:<id>:<saison>:<épisode>`, index `byShow` :

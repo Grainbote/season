@@ -305,6 +305,7 @@ img { max-width: 100%; }
 }
 
 /* ---- Barre de tri ---- */
+.filter-row { display: flex; flex-wrap: wrap; gap: 8px; margin: -6px 0 14px; }
 .sort-bar {
   display: flex;
   align-items: center;

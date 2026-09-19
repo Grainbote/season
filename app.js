@@ -394,7 +394,43 @@
     // dernier visionnage par série (à partir de tous les épisodes vus)
     const epMax = listesSort === "vu" ? await lastWatchedMap() : null;
     const sorters = sortersFor(epMax);
-    const inList = shows.filter((s) => statusOf(s) === listesFilter).sort(sorters[listesSort] || sorters.vu);
+    let inList = shows.filter((s) => statusOf(s) === listesFilter).sort(sorters[listesSort] || sorters.vu);
+
+    // « à voir » : n'afficher que ce qu'elle peut regarder sur ses plateformes
+    const provs = myProviders();
+    const provIds = provs.map((p) => p.id);
+    const canFilter = listesFilter === "a_voir" && provs.length > 0;
+    if (canFilter) {
+      const on = localStorage.getItem("season.onlyMine") === "1";
+      const row = el('<div class="filter-row"></div>');
+      const tog = el(`<button class="genre-tag${on ? " is-on" : ""}">▶ Sur mes plateformes seulement</button>`);
+      tog.addEventListener("click", () => {
+        try { localStorage.setItem("season.onlyMine", on ? "0" : "1"); } catch {}
+        renderListes();
+      });
+      row.append(tog);
+      wrap.append(row);
+      if (on) {
+        // ce qu'on sait déjà (relevé de moins d'une semaine) s'affiche tout de suite ;
+        // le reste se vérifie à la demande, une requête par titre
+        const aVerifier = inList.filter((s) => s.tmdbId && !availFresh(s));
+        inList = inList.filter((s) => availFresh(s) && availOnMine(s, provIds));
+        if (aVerifier.length) {
+          const bar = el('<div class="reco-note" style="margin:-4px 0 12px"></div>');
+          const txt = el(`<span>${aVerifier.length} titre${aVerifier.length > 1 ? "s" : ""} pas encore vérifié${
+            aVerifier.length > 1 ? "s" : ""}. </span>`);
+          const btn = el('<button class="link-btn">↻ Vérifier</button>');
+          bar.append(txt, btn);
+          btn.addEventListener("click", async () => {
+            if (!navigator.onLine || !TMDB.hasKey()) { toast("Pas de réseau"); return; }
+            btn.hidden = true;
+            await fillAvailability(aVerifier, (d, t) => { txt.textContent = `Vérification… ${d}/${t}`; });
+            renderListes();
+          });
+          wrap.append(bar);
+        }
+      }
+    }
 
     if (!inList.length) {
       wrap.append(el(
@@ -1155,6 +1191,25 @@
       });
     }
     return card;
+  }
+
+  // Disponibilité gardée sur la fiche (`avail` = toutes les plateformes où le titre
+  // passe en abonnement / gratuit, `availAt` = date du relevé) : la liste « à voir »
+  // peut ainsi être filtrée sans tout redemander à chaque affichage. Relevé refait au
+  // bout d'une semaine (les catalogues bougent).
+  const AVAIL_TTL = 7 * 24 * 3600 * 1000;
+  const availFresh = (s) => s.availAt && Date.now() - s.availAt < AVAIL_TTL;
+  const availOnMine = (s, ids) => (s.avail || []).some((id) => ids.includes(id));
+  async function fillAvailability(list, onProgress) {
+    let done = 0;
+    await poolRun(list, 12, async (s) => {
+      try {
+        s.avail = await TMDB.availableOn(s.type, s.tmdbId);
+        s.availAt = Date.now();
+        await DB.putShowQuiet(s); // sans toucher updatedAt
+      } catch { /* on réessaiera */ }
+      onProgress(++done, list.length);
+    });
   }
 
   // ---- disponibilité sur ses plateformes -------------------------------
