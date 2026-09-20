@@ -44,8 +44,11 @@ Le dépôt public ne contient que la coquille de l'appli.
   seulement ; un film resté « en cours » compte comme « à voir »).
 - **Tri** (menu déroulant, choix retenu dans `localStorage` `season.sort`) :
   *Vu récemment* (défaut — date du dernier épisode coché, ou date du film ;
-  calculée en parcourant tous les épisodes), *Ajout récent* (`createdAt`),
-  *Titre A→Z*, **Popularité** (depuis le 20/09/2026). Même menu sur Favoris
+  calculée en parcourant tous les épisodes), *Titre A→Z*, **Popularité**
+  (depuis le 20/09/2026). *Ajout récent* (`createdAt`) a été **retiré le
+  21/09/2026** : elle le prenait pour « vu récemment » et s'étonnait de l'ordre.
+  Un choix enregistré qui n'existe plus retombe sur le tri par défaut
+  (`sortOr`) — sinon le menu affichait un tri, l'appli en appliquait un autre. Même menu sur Favoris
   (`season.favSort`) — un seul `sortBar` / `sortersFor` partagé.
 - **Popularité** = `show.popularity` (TMDB), enregistrée depuis le 20/09/2026 par
   `TMDB.tv/movie` (donc mise à jour à chaque rafraîchissement de fiche). Les fiches

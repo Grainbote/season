@@ -356,11 +356,15 @@
   const renderFilms = () => { listesKind = "movie"; return renderListes(); };
   const SORTS = {
     vu: "Vu récemment",
-    ajout: "Ajout récent",
     titre: "Titre A→Z",
     populaire: "Popularité",
   };
-  let listesSort = localStorage.getItem("season.sort") || "vu";
+  // « Ajout récent » (date d'entrée dans Season) retiré le 21/09/2026 : elle le
+  // confondait avec « Vu récemment ». Un choix enregistré qui n'existe plus
+  // retombe sur le tri par défaut (sinon le menu s'affichait sur autre chose
+  // que le tri réellement appliqué).
+  const sortOr = (v, def) => (Object.hasOwn(SORTS, v || "") ? v : def);
+  let listesSort = sortOr(localStorage.getItem("season.sort"), "vu");
   async function renderListes() {
     render(spinner());
     const isMovie = listesKind === "movie";
@@ -502,7 +506,6 @@
     const parTitre = (a, b) => (a.title || "").localeCompare(b.title || "", "fr", { sensitivity: "base" });
     return {
       vu: (a, b) => lastActivity(b, epMax) - lastActivity(a, epMax),
-      ajout: (a, b) => (b.createdAt || 0) - (a.createdAt || 0),
       titre: parTitre,
       // popularité TMDB ; les fiches qui ne l'ont pas encore passent en dernier
       populaire: (a, b) => (b.popularity || 0) - (a.popularity || 0) || parTitre(a, b),
@@ -557,7 +560,7 @@
   // imports TV Time / Letterboxd, voir seedFavorites).
   const FAV_KINDS = { all: "Tout", tv: "Séries", movie: "Films" };
   let favKind = localStorage.getItem("season.favKind") || "all";
-  let favSort = localStorage.getItem("season.favSort") || "titre";
+  let favSort = sortOr(localStorage.getItem("season.favSort"), "titre");
   async function renderFavoris() {
     render(spinner());
     const favs = (await DB.allShows()).filter((s) => s.favorite);
