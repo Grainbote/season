@@ -21,7 +21,7 @@ Le dépôt public ne contient que la coquille de l'appli.
 
 - `index.html` — structure, barre du haut (⏰ À venir + ⚙ Réglages), 7 onglets
   (Séries, Films, Recherche, **Favoris**, **Journal**, **Listes**, Stats)
-- `app.css` — thème sombre, mobile d'abord (max 560 px, safe-area iOS/Android) ; accent **orange** `#ff8a3d` (texte `--on-accent` foncé dessus), `--warn` rouge — depuis le 18/09/2026 (avant : bleu-violet). L'icône de l'appli est restée bleu-violet (`outils/creer-icones.ps1`)
+- `app.css` — thème sombre, mobile d'abord (max 560 px, safe-area iOS/Android) ; accent **orange** `#ff8a3d` (texte `--on-accent` foncé dessus), `--warn` rouge — depuis le 18/09/2026 (avant : bleu-violet). L'icône de l'appli est passée à l'orange elle aussi le 21/09/2026 (`outils/creer-icones.ps1`, `$accent` = `#ff8a3d` ; relancer le script regrave les 3 PNG de `icons/`)
 - `app.js` — toute la logique (navigation par pile de vues, rendu des écrans)
 - `db.js` — couche IndexedDB (stores `shows`, `episodes`)
 - `tmdb.js` — accès à l'API TMDB (recherche, détails, épisodes)

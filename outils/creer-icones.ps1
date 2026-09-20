@@ -1,5 +1,7 @@
 # Fabrique les icônes PNG de Season (192, 512, maskable 512) sans outil externe.
-# Fond sombre facon appli, disque de progression bleu + triangle « lecture » blanc.
+# Fond sombre facon appli, disque de progression orange (l'accent de l'appli,
+# #ff8a3d) + triangle « lecture » blanc. Orange depuis le 21/09/2026 (avant :
+# bleu-violet #6c8cff, resté en place quand l'appli est passée à l'orange).
 Add-Type -AssemblyName System.Drawing
 
 function New-Icon([int]$size, [string]$path, [bool]$maskable) {
@@ -9,7 +11,7 @@ function New-Icon([int]$size, [string]$path, [bool]$maskable) {
   $g.InterpolationMode = 'HighQualityBicubic'
 
   $bg = [System.Drawing.Color]::FromArgb(255, 15, 16, 21)
-  $accent = [System.Drawing.Color]::FromArgb(255, 108, 140, 255)
+  $accent = [System.Drawing.Color]::FromArgb(255, 255, 138, 61)  # --accent #ff8a3d
   $ring = [System.Drawing.Color]::FromArgb(255, 46, 49, 64)
 
   # fond : coins arrondis sauf maskable (plein carré, la plateforme masque)
@@ -38,7 +40,7 @@ function New-Icon([int]$size, [string]$path, [bool]$maskable) {
   # anneau de fond
   $penRing = New-Object System.Drawing.Pen($ring, [single]($size * 0.075))
   $g.DrawEllipse($penRing, $inset, $inset, $box, $box)
-  # arc bleu (progression ~70%)
+  # arc orange (progression ~70%)
   $penArc = New-Object System.Drawing.Pen($accent, [single]($size * 0.075))
   $penArc.StartCap = 'Round'; $penArc.EndCap = 'Round'
   $g.DrawArc($penArc, $inset, $inset, $box, $box, -90, 252)
