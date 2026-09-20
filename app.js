@@ -5,6 +5,7 @@
   const view = document.getElementById("view");
   const topTitle = document.getElementById("topTitle");
   const backBtn = document.getElementById("backBtn");
+  const avenirBtn = document.getElementById("avenirBtn");
   const tabbar = document.getElementById("tabbar");
   const toastEl = document.getElementById("toast");
 
@@ -114,7 +115,7 @@
     [...tabbar.children].forEach((b) => {
       const on = b.dataset.tab === tab;
       b.classList.toggle("is-active", on);
-      // la barre défile (6 onglets) : on ramène l'onglet choisi sous les yeux.
+      // la barre défile (7 onglets) : on ramène l'onglet choisi sous les yeux.
       // Calcul à la main et `scrollLeft` direct : ni scrollIntoView ni
       // `behavior: "smooth"` ne bougent dans cette barre fixée.
       if (on) tabbar.scrollLeft = b.offsetLeft + b.offsetWidth / 2 - tabbar.clientWidth / 2;
@@ -158,6 +159,12 @@
     };
     step();
   }
+  // « À venir » n'est plus un onglet (20/09/2026) : c'est une page de Séries,
+  // ouverte par l'horloge de la barre du haut. Le bouton ne s'affiche donc que
+  // sur l'écran Séries lui-même.
+  function syncAvenirBtn() {
+    avenirBtn.hidden = !(currentTab === "listes" && stack.length <= 1);
+  }
   function go(fn, title, { push = true } = {}) {
     closeOverlay();
     navSeq++;
@@ -170,6 +177,7 @@
     if (push) stack.push({ fn, title });
     else stack[stack.length - 1] = { fn, title };
     backBtn.hidden = stack.length <= 1;
+    syncAvenirBtn();
     topTitle.textContent = title;
     fn();
   }
@@ -181,6 +189,7 @@
     const top = stack[stack.length - 1];
     pendingScroll = top.y || top.vy ? { y: top.y || 0, vy: top.vy || 0, seq: navSeq } : null;
     backBtn.hidden = stack.length <= 1;
+    syncAvenirBtn();
     topTitle.textContent = top.title;
     top.fn();
   }
@@ -193,6 +202,7 @@
     armBackTrap();
   }
   backBtn.addEventListener("click", back);
+  avenirBtn.addEventListener("click", () => go(renderAVenir, "À venir"));
 
   // Bouton retour d'Android (le triangle) : il remonte l'historique du navigateur,
   // or l'appli change d'écran sans y toucher → sans ça, « retour » la fermait.
@@ -237,14 +247,13 @@
   function selectTab(tab) {
     if (tab === "listes") resetTo(renderSeries, "Séries", "listes");
     if (tab === "films") resetTo(renderFilms, "Films", "films");
-    if (tab === "avenir") resetTo(renderAVenir, "À venir", "avenir");
     if (tab === "recherche") resetTo(renderRecherche, "Recherche", "recherche");
     if (tab === "favoris") resetTo(renderFavoris, "Favoris", "favoris");
     if (tab === "journal") resetTo(renderJournal, "Journal", "journal");
     if (tab === "meslistes") resetTo(renderMesListes, "Listes", "meslistes");
     if (tab === "stats") resetTo(renderStats, "Stats", "stats");
   }
-  // 6 onglets ne tiennent pas sur un écran de 360 px : la barre déborde et
+  // 7 onglets ne tiennent pas sur un écran de 360 px : la barre déborde et
   // défile. Le défilement est fait à la main (CSS `touch-action: none`) pour
   // que le navigateur ne s'en mêle pas : rester appuyé ~300 ms prend la barre
   // en main (courte vibration, onglets estompés), un glissement franc (> 6 px)

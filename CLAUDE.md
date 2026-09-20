@@ -19,8 +19,8 @@ téléphone** (IndexedDB) — rien n'est envoyé nulle part.
 HTML/CSS/JS pur, **aucun framework, aucun outil de build** (comme ses autres projets).
 Le dépôt public ne contient que la coquille de l'appli.
 
-- `index.html` — structure, barre du haut (⚙ Réglages), 8 onglets (Séries, À venir,
-  Films, Recherche, **Favoris**, **Journal**, **Listes**, Stats)
+- `index.html` — structure, barre du haut (⏰ À venir + ⚙ Réglages), 7 onglets
+  (Séries, Films, Recherche, **Favoris**, **Journal**, **Listes**, Stats)
 - `app.css` — thème sombre, mobile d'abord (max 560 px, safe-area iOS/Android) ; accent **orange** `#ff8a3d` (texte `--on-accent` foncé dessus), `--warn` rouge — depuis le 18/09/2026 (avant : bleu-violet). L'icône de l'appli est restée bleu-violet (`outils/creer-icones.ps1`)
 - `app.js` — toute la logique (navigation par pile de vues, rendu des écrans)
 - `db.js` — couche IndexedDB (stores `shows`, `episodes`)
@@ -189,7 +189,7 @@ Le dépôt public ne contient que la coquille de l'appli.
 - Pas de réordonnancement manuel des titres en v1 (ordre d'ajout).
 
 ### Barre d'onglets qui défile (depuis le 20/09/2026)
-- 8 onglets ne tiennent pas sur 360 px : `#tabbar` déborde (`overflow-x`, onglets
+- 7 onglets ne tiennent pas sur 360 px : `#tabbar` déborde (`overflow-x`, onglets
   `flex: 1 0 78px`, barre de défilement masquée) et l'onglet actif est recentré par
   `setTab` (`scrollLeft` direct : ni `scrollIntoView` ni `behavior: "smooth"` ne
   bougent dans cette barre `position: fixed`).
@@ -228,7 +228,17 @@ Le dépôt public ne contient que la coquille de l'appli.
   `season.providers` = `[{id,name,logo}]` ; vide = pas de filtre.
 - Inclus dans l'**export** de sauvegarde (`settings.providers`) et restauré à l'import.
 
-### Onglet À venir
+### À venir — page de l'onglet Séries (depuis le 21/09/2026)
+- Ce n'était plus un onglet depuis le 21/09/2026 (son choix) : l'écran s'ouvre
+  par le bouton **⏰ de la barre du haut, à gauche de l'écrou** (`#avenirBtn`),
+  et se pose sur la pile de vues de Séries (`go`, flèche de retour) au lieu de
+  `resetTo`. Le bouton n'apparaît **que sur l'écran Séries lui-même**
+  (`syncAvenirBtn` : `currentTab === "listes"` et pile à 1), il disparaît donc
+  sur une fiche, les réglages et les autres onglets.
+- L'horloge est l'émoji ⏰ suivi de **U+FE0E** (sélecteur de version *texte*) :
+  sans lui, l'émoji couleur ignore `color` et sort rose/rouge ; avec lui, le
+  glyphe monochrome prend l'orange de l'accent (`#avenirBtn`, plus
+  `font-variant-emoji: text`).
 - Prochaines sorties d'épisodes des séries suivies, groupées par date (relatif
   jusqu'à 7 j, sinon jour + date). Tap → fiche.
 - **Scan à la demande** (`scanUpcoming`, bouton « ↻ Actualiser ») : le 1ᵉʳ scan

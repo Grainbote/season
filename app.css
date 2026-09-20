@@ -54,6 +54,7 @@ img { max-width: 100%; }
   border-bottom: 1px solid var(--line);
 }
 #topTitle {
+  margin-right: auto;
   font-size: 19px;
   font-weight: 700;
   letter-spacing: 0.2px;
@@ -424,7 +425,17 @@ img { max-width: 100%; }
 .wtw-src { display: inline-block; font-size: 11px; color: var(--text-dim); margin-top: 2px; }
 
 /* ---- Réglages : plateformes ---- */
-#settingsBtn { margin-left: auto; font-size: 22px; flex: none; }
+#settingsBtn { font-size: 22px; flex: none; }
+/* À venir : entrée depuis la page Séries, à gauche de l'écrou (21/09/2026).
+   Émoji réveil — bien dessiné — forcé en version *texte* (U+FE0E dans le HTML)
+   pour qu'il prenne l'orange de l'accent : en version couleur il ignorerait
+   `color` et sortirait rose/rouge. */
+#avenirBtn {
+  font-size: 22px;
+  flex: none;
+  color: var(--accent);
+  font-variant-emoji: text;
+}
 .prov-chosen { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .prov-chip {
   display: inline-flex; align-items: center; gap: 6px;
