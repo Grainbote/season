@@ -966,7 +966,6 @@
         x.classList.toggle("on", v <= r);
         x.classList.toggle("half", v - 0.5 === r);
       });
-      starsVal.textContent = show.rating ? String(show.rating).replace(".", ",") + " / 5" : "";
     };
     for (let i = 1; i <= 5; i++) {
       const s = el(`<span data-v="${i}">★</span>`);
@@ -979,8 +978,7 @@
       });
       stars.append(s);
     }
-    const starsVal = el('<em class="stars-val"></em>');
-    stars.append(starsVal);
+    // (la valeur chiffrée « x / 5 » sous les étoiles a été retirée le 21/09/2026)
     paint();
     wrap.append(stars);
 
@@ -1734,6 +1732,20 @@
     const search = el('<div class="search-box"><input type="search" placeholder="Chercher une plateforme…" autocomplete="off"></div>');
     const listBox = el('<div class="prov-list"></div>');
     wrap.append(chosenBox, search, listBox);
+
+    // --- sources ---
+    // L'attribution JustWatch (demandée par les conditions de TMDB) a quitté la
+    // fiche le 21/09/2026 : elle est ici, une fois pour toutes, plutôt que
+    // répétée sous chaque « Où regarder ».
+    wrap.append(el('<div class="section-title">Sources</div>'));
+    wrap.append(el(
+      `<p class="poster-sub" style="margin-bottom:20px">Séries, films, affiches et notes :
+       <a class="src-link" href="https://www.themoviedb.org" target="_blank" rel="noopener">TMDB</a> ↗.
+       Disponibilité sur les plateformes :
+       <a class="src-link" href="https://www.justwatch.com" target="_blank" rel="noopener">JustWatch</a> ↗.
+       Cette appli utilise l'API de TMDB sans être approuvée ni certifiée par TMDB.</p>`
+    ));
+
     render(wrap);
 
     let chosen = myProviders();

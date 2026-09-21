@@ -423,6 +423,10 @@ img { max-width: 100%; }
 .wtw-skel { height: 30px; width: 60%; border-radius: 999px; background: var(--bg-elev); margin-bottom: 8px; }
 .wtw-more { color: var(--text-dim); font: inherit; font-size: 12px; padding: 5px 12px; cursor: pointer; }
 
+/* Réglages → Sources : attribution TMDB / JustWatch */
+.src-link { color: var(--accent); text-decoration: none; }
+.src-link:hover { text-decoration: underline; }
+
 /* ---- Réglages : plateformes ---- */
 #settingsBtn { font-size: 22px; flex: none; }
 /* À venir : entrée depuis la page Séries, à gauche de l'écrou (21/09/2026).
@@ -637,12 +641,10 @@ img { max-width: 100%; }
 .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .section-head .link-btn { flex: none; }
 
-/* étoiles grossies et centrées le 21/09/2026 (avant : 30 px, alignées à gauche).
-   `flex-wrap` + `.stars-val` en pleine largeur : la valeur passe SOUS les étoiles,
-   sinon elle les décentrerait en partageant la ligne avec elles. */
+/* étoiles grossies et centrées le 21/09/2026 (avant : 30 px, alignées à gauche ;
+   la valeur chiffrée « x / 5 » qui les suivait a été retirée le même jour). */
 .stars {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 8px;
@@ -657,14 +659,6 @@ img { max-width: 100%; }
   background: linear-gradient(90deg, var(--star) 50%, var(--line) 50%);
   -webkit-background-clip: text; background-clip: text;
   color: transparent;
-}
-.stars-val {
-  flex-basis: 100%;
-  margin-top: 2px;
-  font-style: normal;
-  font-size: 13px;
-  text-align: center;
-  color: var(--text-dim);
 }
 
 textarea.review {
