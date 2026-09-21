@@ -142,7 +142,17 @@ Le dépôt public ne contient que la coquille de l'appli.
   21/09/2026), segmented **Séries / Films** (choix retenu par plateforme le
   temps de la session, `provTab`), tri partagé avec les pages de thème
   (`THEME_SORTS` : Populaires / Mieux notés / Plus récents / Plus anciens, retenu
-  dans `localStorage season.provSort`), grille d'affiches + « Voir plus ».
+  dans `localStorage season.provSort`), puis la grille d'affiches.
+- **Défilement infini** (21/09/2026, à la place du bouton « Voir plus ») : une
+  sentinelle `.load-more` en bas de grille, suivie par un `IntersectionObserver`
+  (`rootMargin: 400px`), charge la page suivante — elle sert aussi de rond de
+  chargement. Deux garde-fous : l'observateur ne redit rien tant que la sentinelle
+  reste visible, donc après chaque chargement on revient la tester soi-même
+  (`proche()`), mais au plus **4 enchaînements** d'affilée (le quota repart à zéro
+  dès qu'elle défile vraiment) ; et une erreur réseau pose `st.total = st.page`
+  pour ne pas boucler dessus. L'observateur est coupé en changeant d'onglet
+  Séries/Films et en quittant l'écran. Les pages de thème, elles, gardent leur
+  bouton « Voir plus ».
 - **Abonnement et gratuit seulement, jamais la location ni l'achat VOD** (sa
   demande) : `TMDB.discoverPage(type, {}, { prov: [id] })` envoie
   `with_watch_providers=<id>`, `watch_region=FR` et

@@ -1432,6 +1432,7 @@
   // ni l'achat VOD (sa demande explicite).
   const provCache = new Map(); // "type|idPlateforme|tri" → pages déjà chargées
   const provTab = new Map();   // plateforme → Séries ou Films, retenu dans la session
+  let provIO = null;           // observateur du défilement infini (une page à la fois)
   let provSort = localStorage.getItem("season.provSort") || "populaire";
   if (!Object.hasOwn(THEME_SORTS, provSort)) provSort = "populaire";
 
@@ -1465,6 +1466,7 @@
     const keyOf = (x) => `${x.type}:${x.tmdbId}`;
 
     const showType = (type) => {
+      if (provIO) { provIO.disconnect(); provIO = null; } // l'onglet précédent n'écoute plus
       provTab.set(viewKey, type);
       seg.querySelectorAll("button").forEach((b) => b.classList.toggle("is-active", b.dataset.t === type));
       body.replaceChildren();
@@ -1472,17 +1474,26 @@
       if (!provCache.has(ck)) provCache.set(ck, { items: [], page: 0, total: 1 });
       const st = provCache.get(ck);
       const grid = el('<div class="poster-grid no-caption"></div>');
-      const more = el('<button class="btn-primary genre-more">Voir plus</button>');
-      body.append(grid, more);
+      // Défilement infini (21/09/2026, à la place du bouton « Voir plus ») : une
+      // sentinelle en bas de grille déclenche la page suivante quand elle approche
+      // de l'écran. Elle sert aussi de rond de chargement.
+      const sentinel = el('<div class="load-more"></div>');
+      body.append(grid, sentinel);
       const left = () => st.page < st.total;
+      let loading = false;
+      const stop = () => { if (provIO) { provIO.disconnect(); provIO = null; } };
+      // encore à portée de l'écran ? (l'observateur ne se redéclenche pas tant que
+      // la sentinelle reste visible : après un chargement, on revient le demander)
+      const proche = () => sentinel.getBoundingClientRect().top < window.innerHeight + 400;
 
       // « pas intéressé » reste respecté ici aussi ; ce qu'elle a déjà vu n'est PAS
       // masqué : c'est un catalogue, pas une liste de suggestions.
       const paint = () => {
         const vis = st.items.filter((x) => !isHidden(keyOf(x)));
         grid.replaceChildren(...vis.map((x) => recoCard(x, new Map(), { onHide: () => paint() })));
-        more.hidden = !left();
-        if (!vis.length && more.hidden) {
+        sentinel.hidden = !left();
+        if (!vis.length && !left()) {
+          stop();
           body.replaceChildren(el(
             `<div class="empty">Rien à montrer côté ${type === "tv" ? "séries" : "films"} pour ${esc(prov.name)}.</div>`
           ));
@@ -1490,8 +1501,9 @@
       };
 
       const load = async () => {
-        more.disabled = true;
-        more.textContent = "Chargement…";
+        if (loading || !left()) return;
+        loading = true;
+        sentinel.replaceChildren(spinner());
         try {
           const r = await TMDB.discoverPage(type, {},
             { prov: [prov.id], page: st.page + 1, sort: THEME_SORT_BY[provSort] });
@@ -1500,16 +1512,29 @@
           const have = new Set(st.items.map((x) => x.tmdbId));
           st.items.push(...r.results.filter((x) => !have.has(x.tmdbId) && have.add(x.tmdbId)));
         } catch {
+          st.total = st.page; // on s'arrête là plutôt que de boucler sur l'erreur
           toast("Chargement impossible");
         }
-        if (!still() || provTab.get(viewKey) !== type) return;
-        more.disabled = false;
-        more.textContent = "Voir plus";
+        loading = false;
+        if (!still() || provTab.get(viewKey) !== type) { stop(); return; }
+        sentinel.replaceChildren();
         paint();
+        // page presque vide (beaucoup de titres masqués) : la sentinelle est encore
+        // sous les yeux et l'observateur ne redira rien — on enchaîne nous-mêmes,
+        // au plus 4 fois d'affilée pour ne pas vider TMDB d'un coup.
+        if (left() && proche() && ++chaine <= 4) load();
       };
-      more.addEventListener("click", load);
-      if (st.items.length) paint();
-      else { grid.replaceChildren(spinner()); load(); }
+      let chaine = 0;
+      provIO = new IntersectionObserver((entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return;
+        if (!still() || provTab.get(viewKey) !== type) { stop(); return; }
+        chaine = 0; // c'est elle qui a défilé : on repart sur un quota neuf
+        load();
+      }, { rootMargin: "400px 0px" });
+      provIO.observe(sentinel);
+
+      paint();
+      if (!st.items.length) { grid.replaceChildren(spinner()); load(); }
     };
 
     for (const [t, label] of [["tv", "Séries"], ["movie", "Films"]]) {

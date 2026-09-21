@@ -431,6 +431,9 @@ img { max-width: 100%; }
 .wtw-more { width: 48px; height: 48px; color: var(--text-dim); font: inherit; font-size: 13px; cursor: pointer; padding: 0; }
 
 /* ---- Page d'une plateforme (catalogue) ---- */
+/* sentinelle du défilement infini : sert aussi de rond de chargement */
+.load-more { min-height: 48px; display: flex; align-items: center; justify-content: center; }
+.load-more[hidden] { display: none; }
 .prov-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 .prov-head img { width: 44px; height: 44px; border-radius: 10px; }
 .prov-head span { font-size: 17px; font-weight: 700; }
