@@ -1474,6 +1474,10 @@
     render(wrap);
 
     const keyOf = (x) => `${x.type}:${x.tmdbId}`;
+    // ce qu'elle a déjà vu est grisé (21/09/2026) — grisé, pas retiré : c'est un
+    // catalogue, elle doit pouvoir retrouver un titre qu'elle a vu.
+    const vus = new Set((await DB.allShows()).filter((x) => x.status === "vu").map((x) => x.key));
+    if (!still()) return;
 
     const showType = (type) => {
       if (provIO) { provIO.disconnect(); provIO = null; } // l'onglet précédent n'écoute plus
@@ -1500,7 +1504,14 @@
       // masqué : c'est un catalogue, pas une liste de suggestions.
       const paint = () => {
         const vis = st.items.filter((x) => !isHidden(keyOf(x)));
-        grid.replaceChildren(...vis.map((x) => recoCard(x, new Map(), { onHide: () => paint() })));
+        grid.replaceChildren(...vis.map((x) => {
+          const card = recoCard(x, new Map(), { onHide: () => paint() });
+          if (vus.has(keyOf(x))) {
+            card.classList.add("is-seen");
+            card.setAttribute("aria-label", `${x.title} (déjà vu)`);
+          }
+          return card;
+        }));
         sentinel.hidden = !left();
         if (!vis.length && !left()) {
           stop();

@@ -172,7 +172,10 @@ Le dépôt public ne contient que la coquille de l'appli.
   `with_watch_monetization_types=flatrate|free|ads` — vérifié sur la requête réelle.
 - « Pas intéressé » reste filtré ; en revanche **ce qu'elle a déjà vu n'est pas
   masqué** (contrairement aux pages de thème) : c'est un catalogue, pas une liste
-  de suggestions.
+  de suggestions. Depuis le 21/09/2026 ces titres-là sont **grisés**
+  (`.poster-card.is-seen`, `status === "vu"` — donc ni les « à voir » ni les
+  séries « en cours ») et leur `aria-label` dit « (déjà vu) ». Ils restent
+  ouvrables.
 - Pages gardées en cache le temps de la session (`provCache`, clé
   `type|idPlateforme|tri`) : revenir dessus ne recharge rien.
 

@@ -443,6 +443,11 @@ img { max-width: 100%; }
 .wtw-more { width: 48px; height: 48px; color: var(--text-dim); font: inherit; font-size: 13px; cursor: pointer; padding: 0; }
 
 /* ---- Page d'une plateforme (catalogue) ---- */
+/* déjà vu : grisé (21/09/2026). Grisé, pas masqué — un catalogue doit pouvoir
+   montrer ce qu'elle a déjà regardé ; ça reste ouvrable. */
+.poster-card.is-seen .poster-wrap { opacity: 0.3; }
+.poster-card.is-seen .poster-title,
+.poster-card.is-seen .poster-sub { opacity: 0.45; }
 /* sentinelle du défilement infini : sert aussi de rond de chargement */
 .load-more { min-height: 48px; display: flex; align-items: center; justify-content: center; }
 .load-more[hidden] { display: none; }
