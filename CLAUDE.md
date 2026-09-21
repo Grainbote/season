@@ -311,6 +311,22 @@ Scripts jetables (scratchpad, pas dans le dépôt) : `convert-lb.mjs`, `add-seri
   Stats → Importer). Après import : 2539 films (1640 vus, 899 à voir), 428 séries.
 - Champ `source: "letterboxd"` sur les fiches importées.
 
+## Vertical seulement (depuis le 21/09/2026)
+
+- **Raccourci installé** : rien à faire, `manifest.webmanifest` a déjà
+  `"orientation": "portrait"` → Chromium met `screenOrientation="sensorPortrait"`
+  sur les activités du WebAPK (vérifié à l'`aapt2` sur l'APK installée le
+  21/09/2026). Le raccourci **ne peut pas** basculer en paysage.
+- **Site ouvert dans un onglet de navigateur** : le manifeste ne s'applique pas.
+  `#rotate` (index.html + fin d'`app.css`) couvre alors l'appli d'un écran
+  « Remets ton téléphone droit ». La media query est volontairement étroite —
+  `(orientation: landscape) and (max-height: 500px) and (pointer: coarse)` —
+  pour ne jamais se déclencher sur un ordinateur (moniteur = plus haut que
+  500 px et souris). `#topbar/#tabbar/#view` passent en `visibility: hidden`
+  (pas `display: none`) : rien n'est redéssiné quand elle remet le téléphone droit.
+- `screen.orientation.lock("portrait")` est tenté au démarrage (fin d'`app.js`)
+  pour le plein écran ; dans un onglet ordinaire il est refusé, d'où le CSS.
+
 ## Position au retour
 
 `go()` mémorise `window.scrollY` (+ `view.scrollTop`) sur l'écran qu'on quitte ; `back()`

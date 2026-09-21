@@ -2300,6 +2300,12 @@
       }).catch(() => {})
     );
   }
+  // Vertical seulement. Le manifeste (`orientation: portrait`) suffit pour le
+  // raccourci installé ; ce verrou-ci couvre le mode plein écran. Dans un
+  // onglet ordinaire il est refusé (NotSupportedError) — c'est le CSS
+  // `#rotate` qui prend le relais.
+  try { screen.orientation?.lock?.("portrait").catch(() => {}); } catch {}
+
   window.addEventListener("online", () => toast("De retour en ligne"));
 
   resetTo(renderSeries, "Séries", "listes");

@@ -829,3 +829,32 @@ html .poster-grid .poster-wrap { border-radius: 0; }
 .theme-editor { margin-top: 4px; }
 .theme-editor[hidden] { display: none; }
 .theme-pick { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ---- Vertical seulement (21/09/2026) ----
+   Le raccourci installé est déjà bloqué par le manifeste (`orientation:
+   portrait` → `sensorPortrait` dans le WebAPK). Reste le cas du site ouvert
+   dans un onglet de navigateur, où le manifeste ne s'applique pas : on couvre
+   l'appli d'un écran « remets-le droit ». Ciblé étroitement pour ne jamais
+   tomber sur un ordinateur : écran tactile (`pointer: coarse`) ET couché ET
+   pas plus haut que 500 px — un moniteur est bien plus haut. */
+#rotate { display: none; }
+@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
+  #rotate {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 24px;
+    text-align: center;
+    background: var(--bg);
+    color: var(--text-dim);
+  }
+  #rotate .rotate-ico { font-size: 42px; color: var(--accent); line-height: 1; }
+  #rotate p { font-size: 15px; line-height: 1.5; }
+  /* l'appli continue d'exister dessous (rien n'est redéssiné au retour) */
+  #topbar, #tabbar, #view { visibility: hidden; }
+}
