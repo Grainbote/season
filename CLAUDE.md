@@ -84,8 +84,15 @@ Le dépôt public ne contient que la coquille de l'appli.
   **bannière** en haut (`show.backdrop`, `TMDB.backdrop`, pleine largeur via des marges
   négatives, dégradé vers le fond), **affiche posée dessus à droite** (flottante, le
   texte l'habille), **gros titre**, `Film|Série · année · RÉALISÉ PAR / CRÉÉE PAR` +
-  nom, ligne **▶ Bande-annonce** (lien YouTube) et durée, puis ♥ / ≡ Listes, pastilles
-  de thèmes, **accroche** (`tagline`, en capitales) et résumé.
+  nom, ligne **▶ Bande-annonce** (lien YouTube) + durée, pastilles de thèmes,
+  **accroche** (`tagline`, en capitales) et résumé.
+- **♥ et ≡ (listes)** : depuis le 21/09/2026 ce sont deux **icônes seules**, posées
+  **sur la ligne de la bande-annonce, à droite de la durée** (`.fav-btn.is-icon`
+  dans `.hero-line` ; avant : deux boutons à libellé sur une rangée à part). Le
+  libellé survit en `aria-label` + `title` (lecteur d'écran, appui long) et suit
+  l'état (« Favori » / « Ajouter aux favoris »). `⊘ Pas intéressé`, lui, **garde
+  son libellé écrit** sur sa rangée (`.detail-actions`), qui n'est insérée que si
+  elle contient quelque chose — donc jamais sur une fiche suivie.
 - Champs TMDB ajoutés le 20/09/2026 : `backdrop`, `tagline`, `director` (films :
   `credits` job *Director* ; séries : `created_by`), `trailer` (clé YouTube,
   `append_to_response=…,videos`, `include_video_language=fr,en`). Une fiche

@@ -601,7 +601,7 @@
         `<div class="empty"><span class="big">♥</span>` +
         (favs.length
           ? `Aucun favori dans « ${FAV_KINDS[favKind]} ».`
-          : `Pas encore de favori.<br>Ouvre une fiche et touche <b>♥ Ajouter aux favoris</b>.`) +
+          : `Pas encore de favori.<br>Ouvre une fiche et touche le <b>♥</b>.`) +
         `</div>`
       ));
     } else {
@@ -829,13 +829,19 @@
       posterBox.classList.add("is-tappable");
       posterBox.addEventListener("click", () => openPoster(show));
     }
-    // boutons sous le sous-titre : ♥ favori (fiche suivie) et ≡ Listes (toujours)
+    // ♥ favori (fiche suivie) et ≡ Listes : depuis le 21/09/2026 ce sont deux
+    // icônes seules, posées sur la ligne de la bande-annonce, à droite de la durée.
+    // Le libellé survit en `aria-label` / `title` (lecteur d'écran, appui long).
+    const heroLine = wrap.querySelector(".detail-hero .hero-line");
+    // ⊘ Pas intéressé garde son libellé écrit, sous le sous-titre
     const actions = el('<div class="detail-actions"></div>');
     if (saved) {
-      const favBtn = el('<button class="fav-btn" type="button"><span class="fav-ico">♥</span><span class="fav-lbl"></span></button>');
+      const favBtn = el('<button class="fav-btn is-icon" type="button"><span class="fav-ico">♥</span></button>');
       const paintFav = () => {
+        const lbl = show.favorite ? "Favori" : "Ajouter aux favoris";
         favBtn.classList.toggle("is-on", !!show.favorite);
-        favBtn.querySelector(".fav-lbl").textContent = show.favorite ? "Favori" : "Ajouter aux favoris";
+        favBtn.setAttribute("aria-label", lbl);
+        favBtn.title = lbl;
         favBtn.setAttribute("aria-pressed", show.favorite ? "true" : "false");
       };
       favBtn.addEventListener("click", async () => {
@@ -846,7 +852,7 @@
         toast(show.favorite ? "Ajouté aux favoris" : "Retiré des favoris");
       });
       paintFav();
-      actions.append(favBtn);
+      heroLine.append(favBtn);
     }
     // ⊘ Pas intéressé : seulement sur une fiche qu'elle ne suit pas (ses propres
     // titres ne sont de toute façon jamais proposés)
@@ -870,14 +876,15 @@
     }
     // ≡ Listes : marche aussi sur une fiche pas encore suivie (le titre est recopié)
     const picker = listPicker(show);
-    const listsBtn = el('<button class="fav-btn" type="button"><span class="fav-ico">≡</span><span class="fav-lbl">Listes</span></button>');
+    const listsBtn = el('<button class="fav-btn is-icon" type="button" aria-label="Listes" title="Listes"><span class="fav-ico">≡</span></button>');
     listsBtn.addEventListener("click", () => {
       picker.box.hidden = !picker.box.hidden;
       listsBtn.classList.toggle("is-on", !picker.box.hidden);
       if (!picker.box.hidden) picker.draw();
     });
-    actions.append(listsBtn);
-    wrap.querySelector(".detail-hero .hero-line").after(actions);
+    heroLine.append(listsBtn);
+    // la rangée à libellés n'existe que s'il reste quelque chose dedans (⊘)
+    if (actions.children.length) heroLine.after(actions);
     wrap.querySelector(".detail-hero").after(picker.box);
     // thèmes (themes.js) → page des titres de ce thème pas encore vus, sur ses plateformes ;
     // fiche suivie : ✎ pour corriger à la main (ajouts / retraits prioritaires sur l'auto)
@@ -1679,7 +1686,7 @@
     wrap.append(add);
     if (!lists.length) {
       wrap.append(el('<div class="empty"><span class="big">≡</span>Pas encore de liste.<br>' +
-        "Crée-en une, puis range des titres dedans avec le bouton <b>≡ Listes</b> d'une fiche.</div>"));
+        "Crée-en une, puis range des titres dedans avec le bouton <b>≡</b> d'une fiche.</div>"));
       render(wrap);
       return;
     }
@@ -1735,7 +1742,7 @@
     const draw = () => {
       grid.replaceChildren();
       if (!(l.items || []).length) {
-        grid.append(el('<div class="empty">Liste vide.<br>Ouvre une fiche et touche <b>≡ Listes</b> pour y ranger un titre.</div>'));
+        grid.append(el('<div class="empty">Liste vide.<br>Ouvre une fiche et touche <b>≡</b> pour y ranger un titre.</div>'));
         return;
       }
       l.items.forEach((x, i) => {

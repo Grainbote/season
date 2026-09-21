@@ -269,6 +269,16 @@ img { max-width: 100%; }
   cursor: pointer;
 }
 .fav-btn .fav-ico { font-size: 14px; }
+/* ♥ et ≡ de la fiche : icônes seules sur la ligne de la bande-annonce (21/09/2026) */
+.fav-btn.is-icon {
+  margin: 0;
+  padding: 0;
+  width: 34px;
+  height: 34px;
+  justify-content: center;
+  color: var(--text);
+}
+.fav-btn.is-icon .fav-ico { font-size: 17px; line-height: 1; }
 .fav-btn.is-on {
   background: var(--accent);
   border-color: var(--accent);
