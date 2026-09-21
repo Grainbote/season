@@ -109,7 +109,10 @@ Le dépôt public ne contient que la coquille de l'appli.
   rester net sur un écran 3x) : plus de nom écrit à côté. Le nom reste dans
   l'`alt` (lecteur d'écran) et le `title` (appui long) ; une plateforme sans
   logo chez TMDB retombe sur une pastille à son nom (`.wtw-noimg`).
-  `MAX = 6` = ce qui tient sur une ligne de 360 px, au-delà un bouton « +N ».
+  **Tout tient sur une ligne** : 6 cases de 48 px + 5 écarts de 8 = 328 px pour
+  332 px utiles sur son écran de 360 (mesuré sur l'Oppo, pas déduit). Le « +N »
+  occupe une case, donc dès qu'il apparaît on ne montre que **5** logos
+  (`shown = list.length > MAX ? MAX - 1 : list.length`).
   `.wtw-chip` est en `flex: 0 0 auto` : des tuiles d'image n'ont pas de largeur
   minimale de contenu, sans ça elles se tasseraient au lieu de passer à la ligne.
   Le lien « Source : JustWatch ↗ » a été **retiré de la fiche le 21/09/2026** et
