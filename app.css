@@ -638,7 +638,19 @@ img { max-width: 100%; }
 .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .section-head .link-btn { flex: none; }
 
-.stars { display: flex; align-items: center; gap: 4px; font-size: 30px; color: var(--line); }
+/* étoiles grossies et centrées le 21/09/2026 (avant : 30 px, alignées à gauche).
+   `flex-wrap` + `.stars-val` en pleine largeur : la valeur passe SOUS les étoiles,
+   sinon elle les décentrerait en partageant la ligne avec elles. */
+.stars {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 2px 0 6px;
+  font-size: 44px;
+  color: var(--line);
+}
 .stars span { cursor: pointer; line-height: 1; }
 .stars span.on { color: var(--star); }
 /* demi-étoile : moitié gauche dorée, moitié droite grise */
@@ -647,7 +659,14 @@ img { max-width: 100%; }
   -webkit-background-clip: text; background-clip: text;
   color: transparent;
 }
-.stars-val { font-style: normal; font-size: 13px; color: var(--text-dim); margin-left: 8px; }
+.stars-val {
+  flex-basis: 100%;
+  margin-top: 2px;
+  font-style: normal;
+  font-size: 13px;
+  text-align: center;
+  color: var(--text-dim);
+}
 
 textarea.review {
   width: 100%;

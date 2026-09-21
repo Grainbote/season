@@ -94,6 +94,17 @@ Le dépôt public ne contient que la coquille de l'appli.
 - **Affiche en grand** : un tap sur l'affiche ouvre une superposition plein écran
   (`openPoster`, image en `w780`) ; un tap, la croix, ou le bouton retour d'Android la
   referment sans quitter la fiche (`closeOverlay` appelé par `popstate`, `go` et `back`).
+- **Ma note** : 5 étoiles à demi-pas (moitié gauche = x,5 ; moitié droite = x ;
+  retaper la note actuelle la remet à 0). Depuis le 21/09/2026 elles sont
+  **grossies (44 px) et centrées**, la valeur « x / 5 » passant sous les étoiles
+  (`.stars-val` en `flex-basis: 100%` — sur la même ligne elle décentrait les
+  étoiles). Le demi-pas se calcule sur `getBoundingClientRect`, donc la taille
+  n'a rien cassé (revérifié).
+- **« Mon avis » retiré de la fiche le 21/09/2026** (sa demande). Le champ
+  `show.review` n'est plus affiché ni modifiable, mais il **reste en base et dans
+  l'export** : il porte les critiques importées de Letterboxd et les marques
+  « ★ Favori sur TV Time » / « ♥ Aimé sur Letterboxd » dont `seedFavorites`
+  se sert. Ne pas le purger sans le lui demander.
 - **Thèmes = pastilles cliquables** (`.genre-tag`) → page thème (voir Thèmes).
 - **Suggestions façon Letterboxd** (depuis le 20/09/2026) : sections « Séries
   similaires » / « Films similaires » (avant : « Dans le même genre · … »), titre de
