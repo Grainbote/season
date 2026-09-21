@@ -141,6 +141,22 @@ Le dépôt public ne contient que la coquille de l'appli.
   « ★ Favori sur TV Time » / « ♥ Aimé sur Letterboxd » dont `seedFavorites`
   se sert. Ne pas le purger sans le lui demander.
 - **Thèmes = pastilles cliquables** (`.genre-tag`) → page thème (voir Thèmes).
+- **Casting** (depuis le 21/09/2026), juste **avant les suggestions** : rangée de
+  photos rondes qui défile (`castSection` / `.cast-row`), nom + rôle sous chaque
+  photo, 20 personnes au plus. **Pas stocké sur la fiche** (ça gonflerait la base
+  pour ~3000 titres) : demandé à l'ouverture comme « Où regarder » et gardé le
+  temps de la session (`castCache`). Côté séries c'est `/tv/{id}/aggregate_credits`
+  (il réunit les rôles de toutes les saisons, là où `credits` ne donne que la
+  dernière ; le rôle est alors dans `roles[0].character`), côté films
+  `/movie/{id}/credits`.
+- **Page d'une personne** (`renderPersonne`) : un tap sur une photo ouvre tout ce
+  dans quoi elle a joué, séries et films mêlés, les plus populaires d'abord
+  (`/person/{id}/combined_credits`, dédoublonné, gardé en session dans
+  `personCache`). **Les talk-shows (genre 10767) et journaux télévisés (10763) sont
+  écartés** : un passage en plateau compte comme un rôle chez TMDB et ces
+  émissions, très populaires, monopolisaient le haut de la liste (Peter Dinklage
+  ouvrait sur trois talk-shows avant Game of Thrones). Mêmes règles que la page
+  d'une plateforme : « pas intéressé » filtré, « déjà vu » grisé mais gardé.
 - **Suggestions façon Letterboxd** (depuis le 20/09/2026) : sections « Séries
   similaires » / « Films similaires » (avant : « Dans le même genre · … »), titre de
   section avec **« Tout voir »** à droite (`.section-head`) et rangée d'**affiches

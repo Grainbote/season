@@ -47,6 +47,7 @@ window.TMDB = (() => {
     // taille au choix : w92 suffit pour une petite pastille, w154 pour les
     // grandes tuiles de « Où regarder » (écran 3x)
     logo: (p, size = "w92") => (p ? `${IMG}/${size}${p}` : null),
+    profile: (p, size = "w185") => (p ? `${IMG}/${size}${p}` : null), // photo d'une personne
 
     // une page de titres d'un thème (themes.js), les plus populaires d'abord :
     // `genres` OU `keywords` (une requête par critère, fusionnées côté appli) ;
@@ -87,6 +88,47 @@ window.TMDB = (() => {
           date: x.release_date || x.first_air_date || "",
         })),
       };
+    },
+
+    // Distribution d'une fiche. Côté séries, `aggregate_credits` réunit les rôles
+    // de toutes les saisons (`credits` ne donne que la dernière) ; le rôle est alors
+    // dans `roles[0].character`.
+    async cast(type, id) {
+      const d = await call(type === "tv" ? `/tv/${id}/aggregate_credits` : `/movie/${id}/credits`);
+      return (d.cast || [])
+        .slice(0, 20)
+        .map((c) => ({
+          id: c.id,
+          name: c.name,
+          role: type === "tv" ? (((c.roles || [])[0] || {}).character || "") : (c.character || ""),
+          photo: c.profile_path || null,
+        }));
+    },
+
+    // Tout ce dans quoi une personne a joué (séries + films), les plus populaires
+    // d'abord. Un même titre peut revenir (plusieurs rôles) : on dédoublonne.
+    async personCredits(id) {
+      const d = await call(`/person/${id}/combined_credits`);
+      const vus = new Set();
+      // À écarter : talk-shows (10767) et journaux télévisés (10763). Un passage sur
+      // un plateau compte comme un rôle chez TMDB, et ces émissions sont si
+      // populaires qu'elles monopolisaient le haut de la liste — ce n'est pas
+      // « un programme dans lequel la personne a joué ».
+      const plateau = new Set([10767, 10763]);
+      return (d.cast || [])
+        .filter((x) => (x.media_type === "tv" || x.media_type === "movie") && x.poster_path)
+        .filter((x) => !(x.genre_ids || []).some((g) => plateau.has(g)))
+        .map((x) => ({
+          type: x.media_type,
+          tmdbId: x.id,
+          title: x.title || x.name,
+          year: (x.release_date || x.first_air_date || "").slice(0, 4),
+          poster: x.poster_path,
+          popularity: x.popularity || 0,
+          date: x.release_date || x.first_air_date || "",
+        }))
+        .filter((x) => !vus.has(x.type + x.tmdbId) && vus.add(x.type + x.tmdbId))
+        .sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
     },
 
     async searchMulti(query) {

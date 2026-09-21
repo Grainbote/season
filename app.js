@@ -943,6 +943,7 @@
         row.append(b);
       }
       wrap.append(row);
+      wrap.append(castSection(show));
       wrap.append(relatedSection(show));
       return wrap;
     }
@@ -1003,6 +1004,7 @@
       show.seasons.forEach((s) => wrap.append(seasonBlock(show, s, watchedMap)));
     }
 
+    wrap.append(castSection(show));
     wrap.append(relatedSection(show));
 
     // --- retirer ---
@@ -1041,6 +1043,104 @@
   }
 
   // ---- « Où regarder » (fiche) --------------------------------------------
+  // ---- CASTING (fiche) --------------------------------------------------
+  // Demandé à l'ouverture de la fiche, comme « Où regarder » : pas stocké sur la
+  // fiche (ça gonflerait la base pour ~3000 titres) mais gardé le temps de la session.
+  const castCache = new Map(); // "type:id" → distribution
+
+  function castSection(show) {
+    const box = el('<div class="cast"></div>');
+    if (!navigator.onLine || !TMDB.hasKey()) return box;
+    const fill = (list) => {
+      box.classList.remove("is-loading");
+      box.replaceChildren();
+      if (!list.length) return;
+      box.append(el('<div class="section-title">Casting</div>'));
+      const row = el('<div class="cast-row"></div>');
+      list.forEach((p) => row.append(castCard(p)));
+      box.append(row);
+    };
+    const cached = castCache.get(show.key);
+    if (cached) { fill(cached); return box; }
+    // on réserve la place pendant le chargement (évite que la page saute)
+    box.classList.add("is-loading");
+    box.append(el('<div class="section-title">Casting</div>'), el('<div class="cast-skel"></div>'));
+    TMDB.cast(show.type, show.tmdbId || show.key.split(":")[1])
+      .then((l) => { castCache.set(show.key, l); fill(l); })
+      .catch(() => { box.classList.remove("is-loading"); box.replaceChildren(); });
+    return box;
+  }
+
+  function castCard(p) {
+    const photo = p.photo
+      ? `<img loading="lazy" src="${TMDB.profile(p.photo)}" alt="">`
+      : `<span class="cast-noimg">${esc((p.name || "?").trim().slice(0, 1))}</span>`;
+    const card = el(
+      `<button class="cast-card" aria-label="${esc(p.name)}">
+        <span class="cast-photo">${photo}</span>
+        <span class="cast-name">${esc(p.name)}</span>
+        ${p.role ? `<span class="cast-role">${esc(p.role)}</span>` : ""}
+      </button>`
+    );
+    card.addEventListener("click", () => go(() => renderPersonne(p), p.name));
+    return card;
+  }
+
+  // ---- PAGE D'UNE PERSONNE ----------------------------------------------
+  // Tout ce dans quoi elle a joué, séries et films mêlés, les plus populaires
+  // d'abord. Mêmes règles que la page d'une plateforme : « pas intéressé » filtré,
+  // « déjà vu » grisé mais gardé.
+  const personCache = new Map(); // id → filmographie, le temps de la session
+
+  async function renderPersonne(p) {
+    const seq = navSeq;
+    const still = () => seq === navSeq;
+    if (!navigator.onLine || !TMDB.hasKey()) {
+      render(el(`<div class="empty">${navigator.onLine ? "Clé TMDB manquante." : "Pas de réseau."}</div>`));
+      return;
+    }
+    render(spinner());
+    let list = personCache.get(p.id);
+    if (!list) {
+      try {
+        list = await TMDB.personCredits(p.id);
+        personCache.set(p.id, list);
+      } catch {
+        if (still()) render(el('<div class="empty">Filmographie indisponible.</div>'));
+        return;
+      }
+    }
+    const vus = new Set((await DB.allShows()).filter((x) => x.status === "vu").map((x) => x.key));
+    if (!still()) return;
+
+    const wrap = el("<div></div>");
+    const head = el('<div class="prov-head"></div>');
+    if (p.photo) head.append(el(`<img class="person-photo" src="${TMDB.profile(p.photo)}" alt="">`));
+    head.append(el(`<span>${esc(p.name)}</span>`));
+    wrap.append(head);
+
+    const keyOf = (x) => `${x.type}:${x.tmdbId}`;
+    const vis = list.filter((x) => !isHidden(keyOf(x)));
+    if (!vis.length) {
+      wrap.append(el('<div class="empty">Rien à montrer.</div>'));
+      render(wrap);
+      return;
+    }
+    wrap.append(el(`<div class="reco-note" style="margin:-4px 0 12px">${vis.length} titre${
+      vis.length > 1 ? "s" : ""}</div>`));
+    const grid = el('<div class="poster-grid no-caption"></div>');
+    grid.append(...vis.map((x) => {
+      const card = recoCard(x);
+      if (vus.has(keyOf(x))) {
+        card.classList.add("is-seen");
+        card.setAttribute("aria-label", `${x.title} (déjà vu)`);
+      }
+      return card;
+    }));
+    wrap.append(grid);
+    render(wrap);
+  }
+
   const wtwCache = new Map(); // « Où regarder » par fiche, le temps de la session
   function whereToWatchSection(show) {
     const box = el('<div class="wtw"></div>');
