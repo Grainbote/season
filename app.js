@@ -598,10 +598,10 @@
 
     if (!list.length) {
       wrap.append(el(
-        `<div class="empty"><span class="big">♥</span>` +
+        `<div class="empty"><span class="big">❤︎</span>` +
         (favs.length
           ? `Aucun favori dans « ${FAV_KINDS[favKind]} ».`
-          : `Pas encore de favori.<br>Ouvre une fiche et touche le <b>♥</b>.`) +
+          : `Pas encore de favori.<br>Ouvre une fiche et touche le <b>❤︎</b>.`) +
         `</div>`
       ));
     } else {
@@ -836,7 +836,10 @@
     // ⊘ Pas intéressé garde son libellé écrit, sous le sous-titre
     const actions = el('<div class="detail-actions"></div>');
     if (saved) {
-      const favBtn = el('<button class="fav-btn is-icon" type="button"><span class="fav-ico">♥</span></button>');
+      // ❤ + U+FE0E (version texte) : la forme pleine de l'émoji, mais en glyphe
+      // monochrome — donc elle prend la couleur du bouton. Le ♥ des jeux de cartes
+      // (U+2665) était étroit et pointu (21/09/2026). Même procédé que l'horloge ⏰.
+      const favBtn = el('<button class="fav-btn is-icon" type="button"><span class="fav-ico">❤︎</span></button>');
       const paintFav = () => {
         const lbl = show.favorite ? "Favori" : "Ajouter aux favoris";
         favBtn.classList.toggle("is-on", !!show.favorite);

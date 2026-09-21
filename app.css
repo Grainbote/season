@@ -121,7 +121,7 @@ img { max-width: 100%; }
   gap: 3px;
   cursor: pointer;
 }
-.tab-ico { font-size: 17px; }
+.tab-ico { font-size: 17px; font-variant-emoji: text; }
 .tab.is-active { color: var(--accent); }
 .tab { transition: opacity 0.12s; }
 
@@ -268,7 +268,9 @@ img { max-width: 100%; }
   font-weight: 600;
   cursor: pointer;
 }
-.fav-btn .fav-ico { font-size: 14px; }
+/* le ❤ est forcé en version texte dans le HTML (U+FE0E) ; cette règle est la
+   ceinture pour les navigateurs qui la connaissent */
+.fav-btn .fav-ico { font-size: 14px; font-variant-emoji: text; }
 /* ♥ et ≡ de la fiche : icônes seules sur la ligne de la bande-annonce (21/09/2026) */
 .fav-btn.is-icon {
   margin: 0;
