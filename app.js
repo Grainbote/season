@@ -1074,11 +1074,15 @@
           : `<span class="wtw-chip wtw-noimg${p.isMine ? " is-mine" : ""}">${esc(p.name)}</span>`
       );
       const row = el('<div class="wtw-list"></div>');
-      const MAX = 6; // ce qui tient sur une ligne de 360 px ; au-delà, bouton « +N »
-      list.slice(0, MAX).forEach((p) => row.append(chip(p)));
-      if (list.length > MAX) {
-        const more = el(`<button class="wtw-chip wtw-more">+${list.length - MAX}</button>`);
-        more.addEventListener("click", () => { more.replaceWith(...list.slice(MAX).map(chip)); });
+      // Tout tient sur UNE ligne : 6 cases de 48 px + 5 écarts de 8 = 328 px, pour
+      // 332 px utiles sur un écran de 360 (mesuré sur son Oppo). Le « +N » occupe
+      // une case, donc dès qu'il apparaît on ne montre que 5 logos.
+      const MAX = 6;
+      const shown = list.length > MAX ? MAX - 1 : list.length;
+      list.slice(0, shown).forEach((p) => row.append(chip(p)));
+      if (list.length > shown) {
+        const more = el(`<button class="wtw-chip wtw-more">+${list.length - shown}</button>`);
+        more.addEventListener("click", () => { more.replaceWith(...list.slice(shown).map(chip)); });
         row.append(more);
       }
       box.append(row);
