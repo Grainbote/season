@@ -954,11 +954,6 @@
       statusRow.append(b);
     }
     wrap.append(statusRow);
-    if (show.type === "tv") {
-      wrap.append(el(
-        '<div class="poster-sub" style="margin:-8px 0 4px">« À voir » / « Vu » cochent ou décochent toute la série.</div>'
-      ));
-    }
 
     // --- note ---
     wrap.append(el('<div class="section-title">Ma note</div>'));
