@@ -781,7 +781,7 @@
     if (type === "tv" && staleMeta({ metaAt: show.epAt })) {
       if (await syncEpisodes(show)) changed = true;
     }
-    // pas de redessin pendant qu'elle écrit son avis (le texte en cours serait perdu)
+    // pas de redessin pendant qu'elle tape dans un champ (sa saisie serait perdue)
     const typing = view.contains(document.activeElement) && /^(TEXTAREA|INPUT)$/.test(document.activeElement.tagName);
     if (changed && still() && !typing) draw(true);
   }
@@ -989,15 +989,10 @@
     paint();
     wrap.append(stars);
 
-    // --- avis ---
-    wrap.append(el('<div class="section-title">Mon avis</div>'));
-    const ta = el(`<textarea class="review" placeholder="Ce que j'en ai pensé…"></textarea>`);
-    ta.value = show.review || "";
-    let saveT;
-    const saveReview = async () => { show.review = ta.value; await DB.putShow(show); };
-    ta.addEventListener("input", () => { clearTimeout(saveT); saveT = setTimeout(saveReview, 600); });
-    ta.addEventListener("blur", saveReview);
-    wrap.append(ta);
+    // (« Mon avis » retiré de la fiche le 21/09/2026, sur sa demande. Le champ
+    // `show.review` reste écrit en base et dans l'export : il porte les avis
+    // importés de Letterboxd et les marques « ★ Favori sur TV Time » /
+    // « ♥ Aimé sur Letterboxd » dont `seedFavorites` se sert.)
 
     // --- saisons / épisodes ---
     if (show.type === "tv" && show.seasons && show.seasons.length) {
@@ -1010,7 +1005,7 @@
     // --- retirer ---
     const del = el('<button class="link-btn" style="color:var(--warn);margin-top:24px">Retirer de mes listes</button>');
     del.addEventListener("click", async () => {
-      if (!confirm(`Retirer « ${show.title} » ? Ta progression et ton avis seront effacés.`)) return;
+      if (!confirm(`Retirer « ${show.title} » ? Ta progression et ta note seront effacées.`)) return;
       await DB.deleteShow(show.key);
       toast("Retiré");
       back();
