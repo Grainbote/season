@@ -100,13 +100,23 @@ Le dépôt public ne contient que la coquille de l'appli.
   suivait a été **retirée** (même jour) : les étoiles se lisent seules. Le
   demi-pas se calcule sur `getBoundingClientRect`, donc la taille n'a rien
   cassé (revérifié).
-- **« Où regarder »** : plateformes TMDB `/watch/providers` (région FR,
-  abonnement + gratuit ; pas de location/achat, demandé le 18/09/2026). Le lien
-  « Source : JustWatch ↗ » sous la liste a été **retiré de la fiche le
-  21/09/2026** et **déplacé dans Réglages → Sources** (son choix) : ces données
-  viennent de JustWatch via TMDB, et les conditions de TMDB demandent de citer
-  JustWatch quand on les affiche. L'attribution TMDB y est aussi. Ne pas la
-  supprimer sans lui en reparler — le dépôt est public.
+- **« Où regarder »** : plateformes TMDB `/watch/providers` (région FR ; pas de
+  location/achat, demandé le 18/09/2026). Refondu le 21/09/2026 :
+  **une seule rangée**, sans les en-têtes « Abonnement » / « Gratuit » (les deux
+  sont fondus par un seul `pick(r.flatrate, r.free, r.ads)`), **ses plateformes
+  en tête** (`pick` trie sur `isMine`, le reste garde l'ordre TMDB), et
+  **logos seuls en grand** (tuiles de 48 px, `TMDB.logo(p.logo, "w154")` pour
+  rester net sur un écran 3x) : plus de nom écrit à côté. Le nom reste dans
+  l'`alt` (lecteur d'écran) et le `title` (appui long) ; une plateforme sans
+  logo chez TMDB retombe sur une pastille à son nom (`.wtw-noimg`).
+  `MAX = 6` = ce qui tient sur une ligne de 360 px, au-delà un bouton « +N ».
+  `.wtw-chip` est en `flex: 0 0 auto` : des tuiles d'image n'ont pas de largeur
+  minimale de contenu, sans ça elles se tasseraient au lieu de passer à la ligne.
+  Le lien « Source : JustWatch ↗ » a été **retiré de la fiche le 21/09/2026** et
+  **déplacé dans Réglages → Sources** (son choix) : ces données viennent de
+  JustWatch via TMDB, et les conditions de TMDB demandent de citer JustWatch
+  quand on les affiche. L'attribution TMDB y est aussi. Ne pas la supprimer sans
+  lui en reparler — le dépôt est public.
 - **« Mon avis » retiré de la fiche le 21/09/2026** (sa demande). Le champ
   `show.review` n'est plus affiché ni modifiable, mais il **reste en base et dans
   l'export** : il porte les critiques importées de Letterboxd et les marques

@@ -1053,32 +1053,35 @@
         kept.forEach((p) => { p.isMine = mine.has(p.id) || !!p.mineVia; });
         return kept.sort((a, b) => b.isMine - a.isMine);
       };
-      const groups = [
-        ["Abonnement", pick(r.flatrate)],
-        ["Gratuit", pick(r.free, r.ads)],
-        // pas de location / achat : elle ne loue pas (demandé le 18/09/2026)
-      ].filter(([, l]) => l.length);
+      // Une seule rangée, sans en-tête « Abonnement » / « Gratuit » (21/09/2026) :
+      // les deux sont fondus dans la même liste, ses plateformes en tête (`pick`
+      // trie sur `isMine`, le reste garde l'ordre TMDB).
+      // (pas de location / achat : elle ne loue pas, demandé le 18/09/2026)
+      const list = pick(r.flatrate, r.free, r.ads);
 
       box.append(el('<div class="section-title">Où regarder</div>'));
-      if (!groups.length) {
+      if (!list.length) {
         box.append(el('<div class="poster-sub">Pas disponible en abonnement ni gratuitement en France pour l\'instant.</div>'));
         return;
       }
-      for (const [label, list] of groups) {
-        const row = el(`<div class="wtw-row"><div class="wtw-label">${label}</div><div class="wtw-list"></div></div>`);
-        const chip = (p) => el(
-          `<span class="wtw-chip${p.isMine ? " is-mine" : ""}">${
-            p.logo ? `<img src="${TMDB.logo(p.logo)}" alt="">` : ""}${esc(p.name)}</span>`
-        );
-        const MAX = 5; // au-delà, bouton « +N »
-        list.slice(0, MAX).forEach((p) => row.lastElementChild.append(chip(p)));
-        if (list.length > MAX) {
-          const more = el(`<button class="wtw-chip wtw-more">+${list.length - MAX}</button>`);
-          more.addEventListener("click", () => { more.replaceWith(...list.slice(MAX).map(chip)); });
-          row.lastElementChild.append(more);
-        }
-        box.append(row);
+      // Logo seul, en grand (21/09/2026 : le nom écrit à côté a été retiré).
+      // Le nom reste lisible par un lecteur d'écran (`alt`) et à l'appui long
+      // (`title`) ; sans logo, on retombe sur le nom écrit.
+      const chip = (p) => el(
+        p.logo
+          ? `<span class="wtw-chip${p.isMine ? " is-mine" : ""}" title="${esc(p.name)}"><img src="${
+              TMDB.logo(p.logo, "w154")}" alt="${esc(p.name)}" loading="lazy"></span>`
+          : `<span class="wtw-chip wtw-noimg${p.isMine ? " is-mine" : ""}">${esc(p.name)}</span>`
+      );
+      const row = el('<div class="wtw-list"></div>');
+      const MAX = 6; // ce qui tient sur une ligne de 360 px ; au-delà, bouton « +N »
+      list.slice(0, MAX).forEach((p) => row.append(chip(p)));
+      if (list.length > MAX) {
+        const more = el(`<button class="wtw-chip wtw-more">+${list.length - MAX}</button>`);
+        more.addEventListener("click", () => { more.replaceWith(...list.slice(MAX).map(chip)); });
+        row.append(more);
       }
+      box.append(row);
       // (lien « Source : JustWatch » retiré le 21/09/2026, sa demande — voir CLAUDE.md)
     };
     // déjà vu pendant la session → affichage immédiat, sans décalage

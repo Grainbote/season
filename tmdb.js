@@ -44,7 +44,9 @@ window.TMDB = (() => {
     poster,
     backdrop,
     still,
-    logo: (p) => (p ? `${IMG}/w92${p}` : null),
+    // taille au choix : w92 suffit pour une petite pastille, w154 pour les
+    // grandes tuiles de « Où regarder » (écran 3x)
+    logo: (p, size = "w92") => (p ? `${IMG}/${size}${p}` : null),
 
     // une page de titres d'un thème (themes.js), les plus populaires d'abord :
     // `genres` OU `keywords` (une requête par critère, fusionnées côté appli) ;
