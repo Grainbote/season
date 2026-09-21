@@ -115,6 +115,8 @@ Le dépôt public ne contient que la coquille de l'appli.
   (`shown = list.length > MAX ? MAX - 1 : list.length`).
   `.wtw-chip` est en `flex: 0 0 auto` : des tuiles d'image n'ont pas de largeur
   minimale de contenu, sans ça elles se tasseraient au lieu de passer à la ligne.
+  **Un tap sur un logo ouvre le catalogue de la plateforme** (`renderPlateforme`,
+  21/09/2026) : les tuiles sont donc des `<button>`.
   Le lien « Source : JustWatch ↗ » a été **retiré de la fiche le 21/09/2026** et
   **déplacé dans Réglages → Sources** (son choix) : ces données viennent de
   JustWatch via TMDB, et les conditions de TMDB demandent de citer JustWatch
@@ -131,6 +133,24 @@ Le dépôt public ne contient que la coquille de l'appli.
   section avec **« Tout voir »** à droite (`.section-head`) et rangée d'**affiches
   seules** qui défile (`.reco-row.no-caption` ; le titre reste en `aria-label`).
   « Tout voir » ouvre `renderSimilaires` : la même liste en grille.
+
+### Page d'une plateforme (depuis le 21/09/2026)
+
+- Ouverte en tapant un logo de « Où regarder » (`renderPlateforme(fromType, prov)`,
+  posée sur la pile de vues, titre = le nom de la plateforme).
+- En-tête logo + nom, segmented **Séries / Films** (choix retenu par plateforme le
+  temps de la session, `provTab`), tri partagé avec les pages de thème
+  (`THEME_SORTS` : Populaires / Mieux notés / Plus récents / Plus anciens, retenu
+  dans `localStorage season.provSort`), grille d'affiches + « Voir plus ».
+- **Abonnement et gratuit seulement, jamais la location ni l'achat VOD** (sa
+  demande) : `TMDB.discoverPage(type, {}, { prov: [id] })` envoie
+  `with_watch_providers=<id>`, `watch_region=FR` et
+  `with_watch_monetization_types=flatrate|free|ads` — vérifié sur la requête réelle.
+- « Pas intéressé » reste filtré ; en revanche **ce qu'elle a déjà vu n'est pas
+  masqué** (contrairement aux pages de thème) : c'est un catalogue, pas une liste
+  de suggestions.
+- Pages gardées en cache le temps de la session (`provCache`, clé
+  `type|idPlateforme|tri`) : revenir dessus ne recharge rien.
 
 ### Thèmes (`themes.js`, depuis le 18/09/2026 — remplacent les genres TMDB)
 - **Pourquoi** : TMDB n'a **pas de genre Romance côté séries** (Off Campus = « Drame »,

@@ -417,8 +417,11 @@ img { max-width: 100%; }
   flex: 0 0 auto; /* jamais rétrécies : elles passent à la ligne */
   width: 48px; height: 48px;
   background: var(--bg-elev); border: 1px solid var(--line);
-  border-radius: 12px; overflow: hidden; font-size: 12px;
+  border-radius: 12px; overflow: hidden;
+  /* ce sont des boutons depuis le 21/09/2026 (ils ouvrent la page plateforme) */
+  padding: 0; color: var(--text); font: inherit; font-size: 12px; cursor: pointer;
 }
+.wtw-chip:active { border-color: var(--accent); }
 .wtw-chip img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .wtw-chip.is-mine { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 /* plateforme sans logo chez TMDB : on retombe sur son nom, en pastille */
@@ -426,6 +429,11 @@ img { max-width: 100%; }
 /* place réservée pendant le chargement (≈ une ligne de plateformes) */
 .wtw-skel { height: 48px; width: 60%; border-radius: 12px; background: var(--bg-elev); margin-bottom: 10px; }
 .wtw-more { width: 48px; height: 48px; color: var(--text-dim); font: inherit; font-size: 13px; cursor: pointer; padding: 0; }
+
+/* ---- Page d'une plateforme (catalogue) ---- */
+.prov-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.prov-head img { width: 44px; height: 44px; border-radius: 10px; }
+.prov-head span { font-size: 17px; font-weight: 700; }
 
 /* Réglages → Sources : attribution TMDB / JustWatch */
 .src-link { color: var(--accent); text-decoration: none; }

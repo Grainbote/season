@@ -1067,12 +1067,17 @@
       // Logo seul, en grand (21/09/2026 : le nom écrit à côté a été retiré).
       // Le nom reste lisible par un lecteur d'écran (`alt`) et à l'appui long
       // (`title`) ; sans logo, on retombe sur le nom écrit.
-      const chip = (p) => el(
-        p.logo
-          ? `<span class="wtw-chip${p.isMine ? " is-mine" : ""}" title="${esc(p.name)}"><img src="${
-              TMDB.logo(p.logo, "w154")}" alt="${esc(p.name)}" loading="lazy"></span>`
-          : `<span class="wtw-chip wtw-noimg${p.isMine ? " is-mine" : ""}">${esc(p.name)}</span>`
-      );
+      // un tap ouvre le catalogue de la plateforme (21/09/2026)
+      const chip = (p) => {
+        const b = el(
+          p.logo
+            ? `<button class="wtw-chip${p.isMine ? " is-mine" : ""}" title="${esc(p.name)}"><img src="${
+                TMDB.logo(p.logo, "w154")}" alt="${esc(p.name)}" loading="lazy"></button>`
+            : `<button class="wtw-chip wtw-noimg${p.isMine ? " is-mine" : ""}">${esc(p.name)}</button>`
+        );
+        b.addEventListener("click", () => go(() => renderPlateforme(show.type, p), p.name));
+        return b;
+      };
       const row = el('<div class="wtw-list"></div>');
       // Tout tient sur UNE ligne : 6 cases de 48 px + 5 écarts de 8 = 328 px, pour
       // 332 px utiles sur un écran de 360 (mesuré sur son Oppo). Le « +N » occupe
@@ -1419,6 +1424,105 @@
     }
     showType(themeTab.get(viewKey) || fromType);
   }
+
+  // ---- PAGE D'UNE PLATEFORME (depuis le 21/09/2026) ---------------------
+  // Un tap sur un logo de « Où regarder » ouvre le catalogue de cette plateforme.
+  // `discoverPage` avec `prov` demande à TMDB `with_watch_monetization_types=
+  // flatrate|free|ads` : abonnement et gratuit seulement, **jamais** la location
+  // ni l'achat VOD (sa demande explicite).
+  const provCache = new Map(); // "type|idPlateforme|tri" → pages déjà chargées
+  const provTab = new Map();   // plateforme → Séries ou Films, retenu dans la session
+  let provSort = localStorage.getItem("season.provSort") || "populaire";
+  if (!Object.hasOwn(THEME_SORTS, provSort)) provSort = "populaire";
+
+  async function renderPlateforme(fromType, prov) {
+    const seq = navSeq;
+    const still = () => seq === navSeq;
+    if (!navigator.onLine || !TMDB.hasKey()) {
+      render(el(`<div class="empty">${navigator.onLine ? "Clé TMDB manquante." : "Pas de réseau."}</div>`));
+      return;
+    }
+    const viewKey = "prov|" + prov.id;
+    const wrap = el("<div></div>");
+    const seg = el('<div class="segmented"></div>');
+    const body = el("<div></div>");
+
+    if (prov.logo) {
+      const head = el('<div class="prov-head"></div>');
+      head.append(el(`<img src="${TMDB.logo(prov.logo, "w154")}" alt="">`));
+      head.append(el(`<span>${esc(prov.name)}</span>`));
+      wrap.append(head);
+    }
+    wrap.append(seg);
+    wrap.append(el(
+      `<div class="reco-note" style="margin:-6px 0 12px">En abonnement ou gratuitement en France. Pas de location ni d'achat.</div>`
+    ));
+    wrap.append(sortBar(provSort, (v) => {
+      provSort = v;
+      try { localStorage.setItem("season.provSort", v); } catch {}
+      renderPlateforme(fromType, prov); // même écran, rechargé avec le nouveau tri
+    }, THEME_SORTS));
+    wrap.append(body);
+    render(wrap);
+
+    const keyOf = (x) => `${x.type}:${x.tmdbId}`;
+
+    const showType = (type) => {
+      provTab.set(viewKey, type);
+      seg.querySelectorAll("button").forEach((b) => b.classList.toggle("is-active", b.dataset.t === type));
+      body.replaceChildren();
+      const ck = `${type}|${prov.id}|${provSort}`;
+      if (!provCache.has(ck)) provCache.set(ck, { items: [], page: 0, total: 1 });
+      const st = provCache.get(ck);
+      const grid = el('<div class="poster-grid no-caption"></div>');
+      const more = el('<button class="btn-primary genre-more">Voir plus</button>');
+      body.append(grid, more);
+      const left = () => st.page < st.total;
+
+      // « pas intéressé » reste respecté ici aussi ; ce qu'elle a déjà vu n'est PAS
+      // masqué : c'est un catalogue, pas une liste de suggestions.
+      const paint = () => {
+        const vis = st.items.filter((x) => !isHidden(keyOf(x)));
+        grid.replaceChildren(...vis.map((x) => recoCard(x, new Map(), { onHide: () => paint() })));
+        more.hidden = !left();
+        if (!vis.length && more.hidden) {
+          body.replaceChildren(el(
+            `<div class="empty">Rien à montrer côté ${type === "tv" ? "séries" : "films"} pour ${esc(prov.name)}.</div>`
+          ));
+        }
+      };
+
+      const load = async () => {
+        more.disabled = true;
+        more.textContent = "Chargement…";
+        try {
+          const r = await TMDB.discoverPage(type, {},
+            { prov: [prov.id], page: st.page + 1, sort: THEME_SORT_BY[provSort] });
+          st.page++;
+          st.total = r.totalPages;
+          const have = new Set(st.items.map((x) => x.tmdbId));
+          st.items.push(...r.results.filter((x) => !have.has(x.tmdbId) && have.add(x.tmdbId)));
+        } catch {
+          toast("Chargement impossible");
+        }
+        if (!still() || provTab.get(viewKey) !== type) return;
+        more.disabled = false;
+        more.textContent = "Voir plus";
+        paint();
+      };
+      more.addEventListener("click", load);
+      if (st.items.length) paint();
+      else { grid.replaceChildren(spinner()); load(); }
+    };
+
+    for (const [t, label] of [["tv", "Séries"], ["movie", "Films"]]) {
+      const b = el(`<button data-t="${t}">${label}</button>`);
+      b.addEventListener("click", () => showType(t));
+      seg.append(b);
+    }
+    showType(provTab.get(viewKey) || fromType);
+  }
+
 
   // ---- JOURNAL (le « Diary » de Letterboxd) -----------------------------
   // Tout ce qu'elle a coché, du plus récent au plus ancien, groupé par mois.
