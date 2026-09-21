@@ -1081,9 +1081,7 @@
         }
         box.append(row);
       }
-      if (r.link) {
-        box.append(el(`<a class="wtw-src" href="${esc(r.link)}" target="_blank" rel="noopener">Source : JustWatch ↗</a>`));
-      }
+      // (lien « Source : JustWatch » retiré le 21/09/2026, sa demande — voir CLAUDE.md)
     };
     // déjà vu pendant la session → affichage immédiat, sans décalage
     const cached = wtwCache.get(show.key);

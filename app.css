@@ -422,7 +422,6 @@ img { max-width: 100%; }
 /* place réservée pendant le chargement (≈ une ligne de plateformes) */
 .wtw-skel { height: 30px; width: 60%; border-radius: 999px; background: var(--bg-elev); margin-bottom: 8px; }
 .wtw-more { color: var(--text-dim); font: inherit; font-size: 12px; padding: 5px 12px; cursor: pointer; }
-.wtw-src { display: inline-block; font-size: 11px; color: var(--text-dim); margin-top: 2px; }
 
 /* ---- Réglages : plateformes ---- */
 #settingsBtn { font-size: 22px; flex: none; }

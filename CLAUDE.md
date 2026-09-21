@@ -100,6 +100,13 @@ Le dépôt public ne contient que la coquille de l'appli.
   (`.stars-val` en `flex-basis: 100%` — sur la même ligne elle décentrait les
   étoiles). Le demi-pas se calcule sur `getBoundingClientRect`, donc la taille
   n'a rien cassé (revérifié).
+- **« Où regarder »** : plateformes TMDB `/watch/providers` (région FR,
+  abonnement + gratuit ; pas de location/achat, demandé le 18/09/2026). Le lien
+  « Source : JustWatch ↗ » sous la liste a été **retiré le 21/09/2026** à sa
+  demande. ⚠️ À savoir : ces données viennent de JustWatch via TMDB, et les
+  conditions de TMDB demandent de citer JustWatch quand on les affiche. Le
+  dépôt est public — si la question revient, c'est ce point-là qu'il faut
+  repeser, pas un oubli de code.
 - **« Mon avis » retiré de la fiche le 21/09/2026** (sa demande). Le champ
   `show.review` n'est plus affiché ni modifiable, mais il **reste en base et dans
   l'export** : il porte les critiques importées de Letterboxd et les marques
