@@ -138,7 +138,8 @@ Le dépôt public ne contient que la coquille de l'appli.
 
 - Ouverte en tapant un logo de « Où regarder » (`renderPlateforme(fromType, prov)`,
   posée sur la pile de vues, titre = le nom de la plateforme).
-- En-tête logo + nom, segmented **Séries / Films** (choix retenu par plateforme le
+- En-tête logo + nom (pas de phrase explicative sous les onglets : retirée le
+  21/09/2026), segmented **Séries / Films** (choix retenu par plateforme le
   temps de la session, `provTab`), tri partagé avec les pages de thème
   (`THEME_SORTS` : Populaires / Mieux notés / Plus récents / Plus anciens, retenu
   dans `localStorage season.provSort`), grille d'affiches + « Voir plus ».

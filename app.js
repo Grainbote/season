@@ -1454,9 +1454,6 @@
       wrap.append(head);
     }
     wrap.append(seg);
-    wrap.append(el(
-      `<div class="reco-note" style="margin:-6px 0 12px">En abonnement ou gratuitement en France. Pas de location ni d'achat.</div>`
-    ));
     wrap.append(sortBar(provSort, (v) => {
       provSort = v;
       try { localStorage.setItem("season.provSort", v); } catch {}
