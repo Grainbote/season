@@ -110,14 +110,20 @@ window.TMDB = (() => {
     async personCredits(id) {
       const d = await call(`/person/${id}/combined_credits`);
       const vus = new Set();
-      // À écarter : talk-shows (10767) et journaux télévisés (10763). Un passage sur
-      // un plateau compte comme un rôle chez TMDB, et ces émissions sont si
-      // populaires qu'elles monopolisaient le haut de la liste — ce n'est pas
-      // « un programme dans lequel la personne a joué ».
-      const plateau = new Set([10767, 10763]);
+      // Pas d'émissions de plateau (sa demande du 23/09/2026) : chez TMDB, venir
+      // sur un plateau compte comme un rôle, et ces émissions sont si populaires
+      // qu'elles monopolisaient le haut de la liste. Deux filtres, parce qu'aucun
+      // ne suffit seul :
+      //  - le genre, pour talk-show (10767), info (10763) et télé-réalité (10764) ;
+      //  - le rôle « Self » / « Himself »…, car beaucoup de jeux de plateau sont
+      //    rangés en simple « Comédie » (Spicks and Specks, Hughesy We Have A
+      //    Problem…) et passaient à travers le filtre par genre.
+      const plateau = new Set([10767, 10763, 10764]);
+      const soiMeme = /^(self|him ?self|her ?self|them ?selves|lui-même|elle-même)\b/i;
       return (d.cast || [])
         .filter((x) => (x.media_type === "tv" || x.media_type === "movie") && x.poster_path)
         .filter((x) => !(x.genre_ids || []).some((g) => plateau.has(g)))
+        .filter((x) => !soiMeme.test((x.character || "").trim()))
         .map((x) => ({
           type: x.media_type,
           tmdbId: x.id,

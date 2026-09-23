@@ -152,11 +152,17 @@ Le dépôt public ne contient que la coquille de l'appli.
 - **Page d'une personne** (`renderPersonne`) : un tap sur une photo ouvre tout ce
   dans quoi elle a joué, séries et films mêlés, les plus populaires d'abord
   (`/person/{id}/combined_credits`, dédoublonné, gardé en session dans
-  `personCache`). **Les talk-shows (genre 10767) et journaux télévisés (10763) sont
-  écartés** : un passage en plateau compte comme un rôle chez TMDB et ces
-  émissions, très populaires, monopolisaient le haut de la liste (Peter Dinklage
-  ouvrait sur trois talk-shows avant Game of Thrones). Mêmes règles que la page
-  d'une plateforme : « pas intéressé » filtré, « déjà vu » grisé mais gardé.
+  `personCache`). **Pas d'émissions de plateau** (sa demande du 23/09/2026) : venir
+  sur un plateau compte comme un rôle chez TMDB, et ces émissions très populaires
+  monopolisaient le haut de la liste (Peter Dinklage ouvrait sur trois talk-shows
+  avant Game of Thrones). **Deux filtres, aucun ne suffit seul** :
+  le **genre** (10767 talk, 10763 info, 10764 télé-réalité) et le **rôle**
+  (`/^(self|himself|herself|themselves|lui-même|elle-même)/i`) — beaucoup de jeux
+  de plateau sont rangés en simple « Comédie » (Spicks and Specks, Hughesy We Have
+  A Problem…) et passaient à travers le filtre par genre. Résultat vérifié sur
+  l'API : Josh Thomas 3 titres (ses deux séries + un spectacle), Peter Dinklage 91.
+  Mêmes règles que la page d'une plateforme : « pas intéressé » filtré,
+  « déjà vu » grisé mais gardé.
 - **Suggestions façon Letterboxd** (depuis le 20/09/2026) : sections « Séries
   similaires » / « Films similaires » (avant : « Dans le même genre · … »), titre de
   section avec **« Tout voir »** à droite (`.section-head`) et rangée d'**affiches
