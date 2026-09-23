@@ -42,14 +42,19 @@ Le dépôt public ne contient que la coquille de l'appli.
   paramétré par `listesKind` ; filtre actif retenu par type (`listesFilters`).
 - Segmented **À voir / En cours / Vu** avec compteurs (Films : **À voir / Vu**
   seulement ; un film resté « en cours » compte comme « à voir »).
-- **Tri** (menu déroulant, choix retenu dans `localStorage` `season.sort`) :
-  *Vu récemment* (défaut — date du dernier épisode coché, ou date du film ;
-  calculée en parcourant tous les épisodes), *Titre A→Z*, **Popularité**
-  (depuis le 20/09/2026). *Ajout récent* (`createdAt`) a été **retiré le
-  21/09/2026** : elle le prenait pour « vu récemment » et s'étonnait de l'ordre.
-  Un choix enregistré qui n'existe plus retombe sur le tri par défaut
-  (`sortOr`) — sinon le menu affichait un tri, l'appli en appliquait un autre. Même menu sur Favoris
-  (`season.favSort`) — un seul `sortBar` / `sortersFor` partagé.
+- **Tri** (menu déroulant) : *Vu récemment* (défaut — date du dernier épisode
+  coché, ou date du film ; calculée en parcourant tous les épisodes), *Titre A→Z*,
+  **Popularité** (depuis le 20/09/2026). *Ajout récent* (`createdAt`) a été
+  **retiré le 21/09/2026** : elle le prenait pour « vu récemment » et s'étonnait
+  de l'ordre. Un choix enregistré qui n'existe plus retombe sur le tri par
+  défaut (`sortOr`) — sinon le menu affichait un tri, l'appli en appliquait un
+  autre. **Tri indépendant par onglet depuis le 23/09/2026** (`listesSorts.tv` /
+  `listesSorts.movie`, clés `season.sort.tv` / `season.sort.movie`) : avant,
+  Trier par popularité dans les Séries changeait aussi le tri des Films (une
+  seule variable/clé partagée, `season.sort`). L'ancienne clé sert juste de
+  valeur de départ la première fois, pour les deux onglets. Même menu sur Favoris
+  (`season.favSort`) — un seul `sortBar` / `sortersFor` partagé, mais là il n'y a
+  qu'un seul écran Favoris, pas deux onglets à distinguer.
 - **Popularité** = `show.popularity` (TMDB), enregistrée depuis le 20/09/2026 par
   `TMDB.tv/movie` (donc mise à jour à chaque rafraîchissement de fiche). Les fiches
   plus anciennes ne l'ont pas : elles se rangent **en dernier**, et une barre sous le

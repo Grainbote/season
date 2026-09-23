@@ -364,7 +364,15 @@
   // retombe sur le tri par défaut (sinon le menu s'affichait sur autre chose
   // que le tri réellement appliqué).
   const sortOr = (v, def) => (Object.hasOwn(SORTS, v || "") ? v : def);
-  let listesSort = sortOr(localStorage.getItem("season.sort"), "vu");
+  // Tri par onglet (23/09/2026) : Séries et Films avaient un seul tri partagé
+  // (`season.sort`), trier l'un changeait l'autre sans le vouloir. Chacun a
+  // maintenant sa clé (`season.sort.tv` / `season.sort.movie`) ; l'ancienne clé
+  // partagée sert juste de valeur de départ la première fois, pour les deux.
+  const legacySort = localStorage.getItem("season.sort");
+  const listesSorts = {
+    tv: sortOr(localStorage.getItem("season.sort.tv") ?? legacySort, "vu"),
+    movie: sortOr(localStorage.getItem("season.sort.movie") ?? legacySort, "vu"),
+  };
   async function renderListes() {
     render(spinner());
     const isMovie = listesKind === "movie";
@@ -394,20 +402,20 @@
     wrap.append(seg);
 
     // barre de tri
-    wrap.append(sortBar(listesSort, (v) => {
-      listesSort = v;
-      localStorage.setItem("season.sort", listesSort);
+    wrap.append(sortBar(listesSorts[listesKind], (v) => {
+      listesSorts[listesKind] = v;
+      try { localStorage.setItem(`season.sort.${listesKind}`, v); } catch {}
       renderListes();
     }));
-    if (listesSort === "populaire") {
+    if (listesSorts[listesKind] === "populaire") {
       const pb = popularityBar(shows, renderListes);
       if (pb) wrap.append(pb);
     }
 
     // dernier visionnage par série (à partir de tous les épisodes vus)
-    const epMax = listesSort === "vu" ? await lastWatchedMap() : null;
+    const epMax = listesSorts[listesKind] === "vu" ? await lastWatchedMap() : null;
     const sorters = sortersFor(epMax);
-    let inList = shows.filter((s) => statusOf(s) === listesFilter).sort(sorters[listesSort] || sorters.vu);
+    let inList = shows.filter((s) => statusOf(s) === listesFilter).sort(sorters[listesSorts[listesKind]] || sorters.vu);
 
     // « à voir » : n'afficher que ce qu'elle peut regarder sur ses plateformes
     const provs = myProviders();
