@@ -163,6 +163,11 @@ Le dépôt public ne contient que la coquille de l'appli.
   l'API : Josh Thomas 3 titres (ses deux séries + un spectacle), Peter Dinklage 91.
   Mêmes règles que la page d'une plateforme : « pas intéressé » filtré,
   « déjà vu » grisé mais gardé.
+- **Tri de la page d'une personne** (23/09/2026, `PERSON_SORTS`, retenu dans
+  `localStorage season.personSort`) : *Popularité* (défaut), *Plus récents*, *Plus
+  anciens*. Tout est déjà chargé : on retrie la grille sur place, sans requête.
+  Un titre sans date (projet annoncé) passe **en dernier dans les deux sens**
+  chronologiques ; à date égale, le plus populaire d'abord.
 - **Suggestions façon Letterboxd** (depuis le 20/09/2026) : sections « Séries
   similaires » / « Films similaires » (avant : « Dans le même genre · … »), titre de
   section avec **« Tout voir »** à droite (`.section-head`) et rangée d'**affiches

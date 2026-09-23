@@ -1091,6 +1091,18 @@
   // d'abord. Mêmes règles que la page d'une plateforme : « pas intéressé » filtré,
   // « déjà vu » grisé mais gardé.
   const personCache = new Map(); // id → filmographie, le temps de la session
+  // Tri de la page (23/09/2026), retenu dans `season.personSort`. Un titre sans
+  // date connue (projet annoncé, fiche incomplète) passe en dernier dans les deux
+  // sens chronologiques ; à égalité, le plus populaire d'abord.
+  const PERSON_SORTS = { populaire: "Popularité", recent: "Plus récents", ancien: "Plus anciens" };
+  const parPop = (a, b) => (b.popularity || 0) - (a.popularity || 0);
+  const PERSON_CMP = {
+    populaire: parPop,
+    recent: (a, b) => (!a.date - !b.date) || String(b.date).localeCompare(String(a.date)) || parPop(a, b),
+    ancien: (a, b) => (!a.date - !b.date) || String(a.date).localeCompare(String(b.date)) || parPop(a, b),
+  };
+  let personSort = localStorage.getItem("season.personSort") || "populaire";
+  if (!Object.hasOwn(PERSON_SORTS, personSort)) personSort = "populaire";
 
   async function renderPersonne(p) {
     const seq = navSeq;
@@ -1129,14 +1141,23 @@
     wrap.append(el(`<div class="reco-note" style="margin:-4px 0 12px">${vis.length} titre${
       vis.length > 1 ? "s" : ""}</div>`));
     const grid = el('<div class="poster-grid no-caption"></div>');
-    grid.append(...vis.map((x) => {
-      const card = recoCard(x);
-      if (vus.has(keyOf(x))) {
-        card.classList.add("is-seen");
-        card.setAttribute("aria-label", `${x.title} (déjà vu)`);
-      }
-      return card;
-    }));
+    // tri (23/09/2026) : tout est déjà chargé, on retrie sur place sans rien redemander
+    const paint = () => {
+      grid.replaceChildren(...[...vis].sort(PERSON_CMP[personSort]).map((x) => {
+        const card = recoCard(x);
+        if (vus.has(keyOf(x))) {
+          card.classList.add("is-seen");
+          card.setAttribute("aria-label", `${x.title} (déjà vu)`);
+        }
+        return card;
+      }));
+    };
+    wrap.append(sortBar(personSort, (v) => {
+      personSort = v;
+      try { localStorage.setItem("season.personSort", v); } catch {}
+      paint();
+    }, PERSON_SORTS));
+    paint();
     wrap.append(grid);
     render(wrap);
   }
