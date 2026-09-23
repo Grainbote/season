@@ -359,19 +359,23 @@
     titre: "Titre A→Z",
     populaire: "Popularité",
   };
-  // « Ajout récent » (date d'entrée dans Season) retiré le 21/09/2026 : elle le
-  // confondait avec « Vu récemment ». Un choix enregistré qui n'existe plus
-  // retombe sur le tri par défaut (sinon le menu s'affichait sur autre chose
-  // que le tri réellement appliqué).
-  const sortOr = (v, def) => (Object.hasOwn(SORTS, v || "") ? v : def);
+  // « Date d'ajout » (date d'entrée dans Season, `createdAt`) est réservé aux
+  // onglets Séries et Films (23/09/2026, sa demande précise : le plus récemment
+  // ajouté à « à voir » d'abord). Un premier essai (« Ajout récent », sur ce même
+  // menu, retiré le 21/09/2026) l'avait confondu avec « Vu récemment » — d'où un
+  // menu à part (`LISTES_SORTS`) plutôt que de le remettre sur celui de Favoris.
+  const LISTES_SORTS = { ...SORTS, ajout: "Date d'ajout" };
+  // Un choix enregistré qui n'existe plus dans le menu retombe sur le tri par
+  // défaut (sinon le menu affichait un tri, l'appli en appliquait un autre).
+  const sortOr = (v, def, set = SORTS) => (Object.hasOwn(set, v || "") ? v : def);
   // Tri par onglet (23/09/2026) : Séries et Films avaient un seul tri partagé
   // (`season.sort`), trier l'un changeait l'autre sans le vouloir. Chacun a
   // maintenant sa clé (`season.sort.tv` / `season.sort.movie`) ; l'ancienne clé
   // partagée sert juste de valeur de départ la première fois, pour les deux.
   const legacySort = localStorage.getItem("season.sort");
   const listesSorts = {
-    tv: sortOr(localStorage.getItem("season.sort.tv") ?? legacySort, "vu"),
-    movie: sortOr(localStorage.getItem("season.sort.movie") ?? legacySort, "vu"),
+    tv: sortOr(localStorage.getItem("season.sort.tv") ?? legacySort, "vu", LISTES_SORTS),
+    movie: sortOr(localStorage.getItem("season.sort.movie") ?? legacySort, "vu", LISTES_SORTS),
   };
   async function renderListes() {
     render(spinner());
@@ -406,7 +410,7 @@
       listesSorts[listesKind] = v;
       try { localStorage.setItem(`season.sort.${listesKind}`, v); } catch {}
       renderListes();
-    }));
+    }, LISTES_SORTS));
     if (listesSorts[listesKind] === "populaire") {
       const pb = popularityBar(shows, renderListes);
       if (pb) wrap.append(pb);
@@ -517,6 +521,10 @@
       titre: parTitre,
       // popularité TMDB ; les fiches qui ne l'ont pas encore passent en dernier
       populaire: (a, b) => (b.popularity || 0) - (a.popularity || 0) || parTitre(a, b),
+      // Date d'ajout dans Season (`createdAt`) : le plus récemment ajouté d'abord,
+      // dans le segment affiché (À voir / En cours / Vu) — Séries et Films
+      // seulement (23/09/2026), voir `LISTES_SORTS`.
+      ajout: (a, b) => (b.createdAt || 0) - (a.createdAt || 0),
     };
   }
   // La popularité n'était pas enregistrée avant le 20/09/2026 : les fiches d'avant
