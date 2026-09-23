@@ -295,8 +295,9 @@ window.TMDB = (() => {
     // série, séries pour un film) aux genres correspondants via /discover.
     // `prov` (ids de plateformes) : ne garder que ce qui y est disponible.
     // `skip` (clés « type:id ») : titres à ne pas proposer (déjà vus…).
-    // `themes` (tableau de listes de mots-clés, une par thème précis de la fiche) :
-    // les titres qui partagent un de ces thèmes passent en tête des deux rangées.
+    // `themes` ([{ keywords, weight }], un par thème précis de la fiche, du plus
+    // central au moins central) : les titres qui partagent un de ces thèmes passent
+    // en tête des deux rangées, chaque thème y prenant une place selon son poids.
     async related(type, id, { prov = [], skip = new Set(), themes = [] } = {}) {
       const d = await call(`/${type}/${id}`, { append_to_response: "recommendations,similar" });
       const map = (x, t) => ({
@@ -359,20 +360,31 @@ window.TMDB = (() => {
 
       // titres partageant un thème : une requête par thème (mots-clés + genres, ou
       // mots-clés seuls si trop peu) ; ceux qui cumulent plusieurs thèmes d'abord,
-      // puis un de chaque thème à tour de rôle, le plus rare en premier (sinon
-      // « amitié », très répandu, noierait « sport »)
+      // puis les thèmes se partagent la place **selon leur poids** (centralité dans
+      // la fiche : Ted Lasso Sport 5 / amitié 2 → ~5 titres sport pour 2 d'amitié),
+      // le plus rare passant devant à poids égal
       const themed = async (t, ids) => {
         if (!themes.length) return [];
-        const lists = (await Promise.all(themes.map(async (kw) => {
+        const lists = (await Promise.all(themes.map(async ({ keywords: kw, weight = 1 }) => {
           const both = await discover(t, ids, { keywords: kw, pages: 2 });
           const list = both.length >= 8 ? both : merge(both, await discover(t, [], { keywords: kw, pages: 2 }));
-          return { list, total: both.total || Infinity };
-        }))).sort((a, b) => a.total - b.total).map((o) => o.list);
+          return { list, weight, total: both.total || Infinity };
+        }))).filter((o) => o.list.length).sort((a, b) => b.weight - a.weight || a.total - b.total);
         const count = new Map();
-        lists.flat().forEach((x) => count.set(x.tmdbId, (count.get(x.tmdbId) || 0) + 1));
-        const turns = [];
-        for (let i = 0; i < Math.max(...lists.map((l) => l.length)); i++) {
-          lists.forEach((l) => l[i] && turns.push(l[i]));
+        lists.forEach((o) => o.list.forEach((x) => count.set(x.tmdbId, (count.get(x.tmdbId) || 0) + 1)));
+        // tourniquet pondéré « lissé » : chaque tour, chaque thème encore fourni gagne
+        // son poids en crédit ; le plus crédité donne un titre et paie le total
+        const turns = [], credit = lists.map(() => 0), pos = lists.map(() => 0);
+        for (;;) {
+          const live = lists.map((o, i) => (pos[i] < o.list.length ? i : -1)).filter((i) => i >= 0);
+          if (!live.length) break;
+          let best = live[0];
+          for (const i of live) {
+            credit[i] += lists[i].weight;
+            if (credit[i] > credit[best]) best = i;
+          }
+          credit[best] -= live.reduce((s, i) => s + lists[i].weight, 0);
+          turns.push(lists[best].list[pos[best]++]);
         }
         return merge(turns.filter((x) => count.get(x.tmdbId) > 1), turns);
       };

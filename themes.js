@@ -116,22 +116,37 @@ window.THEMES = (() => {
       "Science-Fiction & Fantastique": 10765, "War & Politics": 10768, Western: 37 },
   };
 
-  // thèmes détectés automatiquement (genreIds / keywordIds stockés sur la fiche)
-  function autoThemes(show) {
+  // centralité de chaque thème pour une fiche : nombre de ses mots-clés présents
+  // (+1 si un de ses genres y est). Ted Lasso : Sport 5, Famille & amitié 2.
+  function scoreOf(show) {
     const g = new Set(show.genreIds && show.genreIds.length
       ? show.genreIds
       : (show.genres || []).map((n) => GENRE_NAMES[show.type === "tv" ? "tv" : "movie"][n]).filter(Boolean));
     const k = new Set(show.keywordIds || []);
-    return list
-      .filter((t) => genresFor(t, show.type).some((x) => g.has(x)) || t.keywords.some((x) => k.has(x)))
-      .map((t) => t.id);
+    const out = new Map();
+    for (const t of list) {
+      const n = [...new Set(t.keywords)].filter((x) => k.has(x)).length
+        + (genresFor(t, show.type).some((x) => g.has(x)) ? 1 : 0);
+      if (n) out.set(t.id, n);
+    }
+    return out;
   }
 
-  // thèmes d'une fiche : auto + ajouts manuels − retraits manuels ; précis d'abord
+  // thèmes détectés automatiquement (genreIds / keywordIds stockés sur la fiche)
+  function autoThemes(show) {
+    return [...scoreOf(show).keys()];
+  }
+
+  // thèmes d'une fiche : auto + ajouts manuels − retraits manuels ; précis d'abord,
+  // ajouts manuels en tête, puis du plus central au moins central (ordre de la liste
+  // en cas d'égalité)
   function themesOf(show) {
     const removed = new Set(show.tagsRemove || []);
-    const ids = new Set([...autoThemes(show), ...(show.tagsAdd || [])].filter((id) => !removed.has(id)));
-    return list.filter((t) => ids.has(t.id)).sort((a, b) => !!a.broad - !!b.broad);
+    const added = new Set(show.tagsAdd || []);
+    const sc = scoreOf(show);
+    const ids = new Set([...sc.keys(), ...added].filter((id) => !removed.has(id)));
+    return list.filter((t) => ids.has(t.id)).sort((a, b) => !!a.broad - !!b.broad
+      || added.has(b.id) - added.has(a.id) || (sc.get(b.id) || 0) - (sc.get(a.id) || 0));
   }
 
   // critères de la page d'un thème pour un type : par défaut, genres du type OU mots-clés
@@ -150,6 +165,7 @@ window.THEMES = (() => {
     get: (id) => byId.get(id),
     genresFor,
     autoThemes,
+    scoreOf,
     themesOf,
     children: (id) => list.filter((t) => t.parent === id),
   };

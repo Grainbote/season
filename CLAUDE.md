@@ -221,13 +221,16 @@ Le dépôt public ne contient que la coquille de l'appli.
   « Tout voir » ouvre `renderSimilaires` : la même liste en grille.
 - **Suggestions guidées par les thèmes** (23/09/2026, sa demande « affiner les genres
   pour affiner les recommandations ») : `relatedSection` passe à `TMDB.related` les
-  mots-clés des **thèmes précis** de la fiche (`themes: [[ids…], …]`, un tableau par
-  thème ; ses ✎ comptent, ajouts manuels d'abord, un sous-thème remplace son parent,
-  4 max ; ids des thèmes dans `cacheKey`). Dans `related` : `themed(t, genres)` = une
-  requête `/discover` par thème (mots-clés + genres, 2 pages ; complétée par mots-clés
-  seuls si < 8), titres cumulant plusieurs thèmes d'abord puis **tour à tour, thème le
-  plus rare en premier** (`total_results`) — sinon « Famille & amitié » (`friendship`,
-  partout) noyait « Sport ». Ordre final **même type** : recos TMDB du thème → 6 autres
+  mots-clés des **thèmes précis** de la fiche (`themes: [{keywords, weight}]`, du plus
+  central au moins central, `weight` = centralité `THEMES.scoreOf` ; un ancien ajout
+  manuel pèse comme le thème principal ; un sous-thème remplace son parent, 4 max ;
+  `id:poids` dans `cacheKey` et `data-themes`). Dans `related` : `themed(t, genres)` =
+  une requête `/discover` par thème (mots-clés + genres, 2 pages ; complétée par
+  mots-clés seuls si < 8), titres cumulant plusieurs thèmes d'abord puis **tourniquet
+  pondéré lissé** : chaque thème prend une place proportionnelle à son poids (Ted Lasso
+  Sport 5 / amitié 2 → ~5 titres sport pour 2 d'amitié), le plus rare
+  (`total_results`) devant à poids égal. Avant le poids (même jour) : tour à tour
+  strict, où « Famille & amitié » (`friendship`, partout) diluait « Sport ». Ordre final **même type** : recos TMDB du thème → 6 autres
   titres du thème → reste des recos TMDB → reste du thème → `similar` (le plus faible :
   Star Trek pour Ted Lasso). **Rangée croisée** : titres du thème puis l'ancien discover
   par genres ponts. Sans thème précis : comportement d'avant (recos puis similar).
@@ -297,8 +300,14 @@ Le dépôt public ne contient que la coquille de l'appli.
   demandent `append_to_response=keywords` → `show.genreIds`, `show.keywordIds`. Fiche
   suivie sans `keywordIds` = périmée → complétée en tâche de fond à l'ouverture. Repli
   noms fr-FR → ids (`GENRE_NAMES`) pour les vieilles fiches.
-- **Fiche** : pastilles = `themesOf(show)` (précis d'abord). Fiche suivie : **✎** → tous les
-  thèmes à cocher ; `show.tagsAdd` / `show.tagsRemove` (relatifs à l'auto), prioritaires.
+- **Fiche** : pastilles = `themesOf(show)` : précis d'abord, puis **du plus central au
+  moins central** (23/09/2026) — centralité `scoreOf(show)` = nombre de mots-clés du
+  thème présents sur la fiche, +1 si un de ses genres y est (Ted Lasso : Sport 5,
+  Famille & amitié 2 ; Heartstopper : Queer 4, Romance 3, Teen 3…), ordre de la liste
+  à égalité. Le **✎** qui permettait de cocher/décocher les thèmes d'une fiche suivie a
+  été **retiré le 23/09/2026** (sa demande) ; les `show.tagsAdd` / `show.tagsRemove`
+  déjà enregistrés restent appliqués (ajouts en tête des pastilles), sans moyen de les
+  modifier dans l'appli.
 - **Page thème** (`renderTheme(fromType, themeId)`) : Séries / Films, **pastilles des
   sous-thèmes** (ou « ↑ Tout Romance » + voisins depuis un sous-thème), note plateformes.
   Critères `THEMES.findFor` : par défaut genres OU mots-clés (une requête `/discover`

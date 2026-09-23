@@ -931,45 +931,14 @@
     // la rangée à libellés n'existe que s'il reste quelque chose dedans (⊘)
     if (actions.children.length) heroLine.after(actions);
     wrap.querySelector(".detail-hero").after(picker.box);
-    // thèmes (themes.js) → page des titres de ce thème pas encore vus, sur ses plateformes ;
-    // fiche suivie : ✎ pour corriger à la main (ajouts / retraits prioritaires sur l'auto)
-    const tagsBox = wrap.querySelector(".genres");
-    const editor = el('<div class="theme-editor" hidden></div>');
-    const drawTags = () => {
-      tagsBox.replaceChildren(...THEMES.themesOf(show).map((t) => {
-        const b = el(`<button class="genre-tag">${esc(t.label)}</button>`);
-        b.addEventListener("click", () => go(() => renderTheme(show.type, t.id), t.label));
-        return b;
-      }));
-      if (saved) {
-        const ed = el(`<button class="genre-tag tag-edit" aria-label="Modifier les thèmes">✎</button>`);
-        ed.addEventListener("click", () => { editor.hidden = !editor.hidden; if (!editor.hidden) drawEditor(); });
-        tagsBox.append(ed);
-      }
-    };
-    const drawEditor = () => {
-      const auto = new Set(THEMES.autoThemes(show));
-      const on = new Set(THEMES.themesOf(show).map((t) => t.id));
-      editor.replaceChildren(el('<div class="section-title">Thèmes de ce titre</div>'));
-      const box = el('<div class="theme-pick"></div>');
-      for (const t of THEMES.list) {
-        const b = el(`<button class="genre-tag${on.has(t.id) ? " is-on" : ""}">${t.parent ? "· " : ""}${esc(t.label)}</button>`);
-        b.addEventListener("click", async () => {
-          const add = new Set(show.tagsAdd || []), rem = new Set(show.tagsRemove || []);
-          if (on.has(t.id)) { add.delete(t.id); if (auto.has(t.id)) rem.add(t.id); }
-          else { rem.delete(t.id); if (!auto.has(t.id)) add.add(t.id); }
-          show.tagsAdd = [...add];
-          show.tagsRemove = [...rem];
-          await DB.putShow(show);
-          drawTags();
-          drawEditor();
-        });
-        box.append(b);
-      }
-      editor.append(box, el('<div class="poster-sub" style="margin-top:6px">Tes choix priment sur le classement automatique.</div>'));
-    };
-    drawTags();
-    wrap.append(editor);
+    // thèmes (themes.js) → page des titres de ce thème pas encore vus, sur ses plateformes.
+    // Plus de ✎ pour les corriger (retiré le 23/09/2026, sa demande) ; les anciens
+    // `tagsAdd` / `tagsRemove` déjà enregistrés restent appliqués par `themesOf`.
+    wrap.querySelector(".genres").replaceChildren(...THEMES.themesOf(show).map((t) => {
+      const b = el(`<button class="genre-tag">${esc(t.label)}</button>`);
+      b.addEventListener("click", () => go(() => renderTheme(show.type, t.id), t.label));
+      return b;
+    }));
 
     if (show.tagline) wrap.append(el(`<div class="tagline">${esc(show.tagline)}</div>`));
     if (show.overview) wrap.append(el(`<p class="overview">${esc(show.overview)}</p>`));
@@ -1311,27 +1280,32 @@
     box.append(spinner());
     const provs = myProviders();
     const provById = new Map(provs.map((p) => [p.id, p]));
-    // thèmes précis de la fiche (ses ✎ compris, ajouts manuels d'abord) → titres du même
-    // thème en tête ; un sous-thème remplace son parent (plus précis), 4 thèmes max
+    // thèmes précis de la fiche, du plus central au moins central (`themesOf`) → titres
+    // du même thème en tête, chacun avec un poids = sa centralité (`scoreOf` ; un ancien
+    // ajout manuel pèse comme le thème principal) ; un sous-thème remplace son parent
+    // (plus précis), 4 thèmes max
     const precise = THEMES.themesOf(show).filter((t) => !t.broad && t.keywords.length);
     const parents = new Set(precise.map((t) => t.parent).filter(Boolean));
     const manual = new Set(show.tagsAdd || []);
-    const themeList = precise.filter((t) => !parents.has(t.id))
-      .sort((a, b) => manual.has(b.id) - manual.has(a.id)).slice(0, 4);
-    box.dataset.themes = themeList.map((t) => t.id).join(",");
+    const sc = THEMES.scoreOf(show);
+    const themeList = precise.filter((t) => !parents.has(t.id)).slice(0, 4);
+    const top = Math.max(1, ...themeList.map((t) => sc.get(t.id) || 0));
+    const weightOf = (t) => (manual.has(t.id) ? top : Math.max(1, sc.get(t.id) || 0));
+    box.dataset.themes = themeList.map((t) => `${t.id}:${weightOf(t)}`).join(",");
     (async () => {
       try {
         // on masque ce qui est vu ou commencé ; « à voir » reste (sans étiquette)
         const mine = new Map((await DB.allShows()).map((s) => [s.key, s.status]));
         const hidden = (k) => k === show.key || isHidden(k) ||
           mine.get(k) === "vu" || mine.get(k) === "en_cours";
-        const cacheKey = show.key + "|" + provs.map((p) => p.id).join(",") + "|" + themeList.map((t) => t.id).join(",");
+        const cacheKey = show.key + "|" + provs.map((p) => p.id).join(",") + "|" + box.dataset.themes;
         let data = relatedCache.get(cacheKey);
         if (!data) {
           // on dit aussi à TMDB de sauter ce qu'elle a masqué : il propose autre chose
           const skip = new Set([...[...mine.keys()].filter(hidden), ...hiddenKeys]);
           data = await TMDB.related(show.type, show.tmdbId || show.key.split(":")[1],
-            { prov: provs.map((p) => p.id), skip, themes: themeList.map((t) => t.keywords) });
+            { prov: provs.map((p) => p.id), skip,
+              themes: themeList.map((t) => ({ keywords: t.keywords, weight: weightOf(t) })) });
           relatedCache.set(cacheKey, data);
         }
         const keep = (list) => list.filter((x) => !hidden(`${x.type}:${x.tmdbId}`)).slice(0, 15);
