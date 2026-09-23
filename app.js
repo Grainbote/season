@@ -797,7 +797,9 @@
     let changed = false;
     // (sans mots-clés = enregistrée avant les thèmes : on les récupère tout de suite)
     // (sans bannière = enregistrée avant la nouvelle en-tête : on la complète)
-    if (staleMeta(show) || !Array.isArray(show.keywordIds) || show.backdrop === undefined) {
+    // (sans directorPeople = enregistrée avant que le nom soit cliquable, 23/09/2026)
+    if (staleMeta(show) || !Array.isArray(show.keywordIds) || show.backdrop === undefined
+      || !Array.isArray(show.directorPeople)) {
       try { await fetchMeta(show); await DB.putShow(show); changed = true; } catch {}
     }
     if (type === "tv" && staleMeta({ metaAt: show.epAt })) {
@@ -826,14 +828,23 @@
     const duree = show.type === "movie"
       ? (show.runtime ? fmtDuration(show.runtime) : "")
       : (show.epRunTime ? `${show.epRunTime} min / épisode` : "");
+    // Nom du réalisateur/créateur cliquable → sa page (23/09/2026, `renderPersonne`,
+    // comme pour le casting). `directorPeople` (avec id TMDB) prime sur `director`
+    // (texte seul) ; une fiche déjà suivie affiche `director` en simple texte tant
+    // que `directorPeople` n'a pas encore été récupéré en tâche de fond.
+    const dirPeople = Array.isArray(show.directorPeople) ? show.directorPeople : null;
+    const hasDirector = dirPeople ? dirPeople.length > 0 : !!show.director;
+    const dirInner = dirPeople
+      ? dirPeople.map((p, i) => `<button class="dir-link" data-i="${i}">${esc(p.name)}</button>`).join(", ")
+      : esc(show.director || "");
     wrap.append(el(
       `<div class="detail-hero${bd ? " has-bd" : ""}">
         ${bd ? `<div class="hero-bd"><img src="${bd}" alt=""></div>` : ""}
         <div class="hero-body">
           <div class="poster-wrap">${posterImg}</div>
           <h2>${esc(show.title)}</h2>
-          <div class="sub">${esc(line1)}${show.director
-            ? ` · <span class="hero-by">${dirLabel}</span><br><b>${esc(show.director)}</b>`
+          <div class="sub">${esc(line1)}${hasDirector
+            ? ` · <span class="hero-by">${dirLabel}</span><br><b>${dirInner}</b>`
             : ""}</div>
           <div class="hero-line">
             ${show.trailer
@@ -850,6 +861,12 @@
     if (show.poster) {
       posterBox.classList.add("is-tappable");
       posterBox.addEventListener("click", () => openPoster(show));
+    }
+    if (dirPeople && dirPeople.length) {
+      wrap.querySelectorAll(".dir-link").forEach((btn) => {
+        const p = dirPeople[+btn.dataset.i];
+        btn.addEventListener("click", () => go(() => renderPersonne(p), p.name));
+      });
     }
     // ♥ favori (fiche suivie) et ≡ Listes : depuis le 21/09/2026 ce sont deux
     // icônes seules, posées sur la ligne de la bande-annonce, à droite de la durée.
@@ -1109,10 +1126,14 @@
   }
 
   // ---- PAGE D'UNE PERSONNE ----------------------------------------------
-  // Tout ce dans quoi elle a joué, séries et films mêlés, les plus populaires
-  // d'abord. Mêmes règles que la page d'une plateforme : « pas intéressé » filtré,
-  // « déjà vu » grisé mais gardé.
-  const personCache = new Map(); // id → filmographie, le temps de la session
+  // Tout ce dans quoi elle a travaillé, séparé en onglets — Acteur, Réalisateur,
+  // Producteur (23/09/2026) — qui n'apparaissent que si elle a des crédits dans
+  // cette catégorie (« si jamais le cas échéant », sa demande). Mêmes règles que
+  // la page d'une plateforme : « pas intéressé » filtré, « déjà vu » grisé mais
+  // gardé.
+  const personCache = new Map(); // id → { acteur, realisateur, producteur }, le temps de la session
+  const personKindTab = new Map(); // id → onglet retenu, le temps de la session
+  const PERSON_KINDS = { acteur: "Acteur", realisateur: "Réalisateur", producteur: "Producteur" };
   // Tri de la page (23/09/2026), retenu dans `season.personSort`. Un titre sans
   // date connue (projet annoncé, fiche incomplète) passe en dernier dans les deux
   // sens chronologiques ; à égalité, le plus populaire d'abord.
@@ -1134,11 +1155,11 @@
       return;
     }
     render(spinner());
-    let list = personCache.get(p.id);
-    if (!list) {
+    let credits = personCache.get(p.id);
+    if (!credits) {
       try {
-        list = await TMDB.personCredits(p.id);
-        personCache.set(p.id, list);
+        credits = await TMDB.personCredits(p.id);
+        personCache.set(p.id, credits);
       } catch {
         if (still()) render(el('<div class="empty">Filmographie indisponible.</div>'));
         return;
@@ -1154,18 +1175,26 @@
     wrap.append(head);
 
     const keyOf = (x) => `${x.type}:${x.tmdbId}`;
-    const vis = list.filter((x) => !isHidden(keyOf(x)));
-    if (!vis.length) {
+    const visibleFor = (kind) => (credits[kind] || []).filter((x) => !isHidden(keyOf(x)));
+    // n'affiche un onglet que s'il a quelque chose dedans (Acteur, Réalisateur,
+    // Producteur dans cet ordre) ; pas d'onglets du tout si un seul en a
+    const kinds = Object.keys(PERSON_KINDS).filter((k) => visibleFor(k).length > 0);
+    if (!kinds.length) {
       wrap.append(el('<div class="empty">Rien à montrer.</div>'));
       render(wrap);
       return;
     }
+
+    const seg = kinds.length > 1 ? el('<div class="segmented"></div>') : null;
+    if (seg) wrap.append(seg);
+    let kind = kinds.includes(personKindTab.get(p.id)) ? personKindTab.get(p.id) : kinds[0];
+
     // compteur « N titres » retiré le 23/09/2026 (sa demande) ; le tri remonte
     // juste sous le nom, à sa place
     const grid = el('<div class="poster-grid no-caption"></div>');
     // tri (23/09/2026) : tout est déjà chargé, on retrie sur place sans rien redemander
     const paint = () => {
-      grid.replaceChildren(...[...vis].sort(PERSON_CMP[personSort]).map((x) => {
+      grid.replaceChildren(...visibleFor(kind).sort(PERSON_CMP[personSort]).map((x) => {
         const card = recoCard(x);
         if (vus.has(keyOf(x))) {
           card.classList.add("is-seen");
@@ -1174,6 +1203,19 @@
         return card;
       }));
     };
+    if (seg) {
+      for (const k of kinds) {
+        const b = el(`<button data-k="${k}">${PERSON_KINDS[k]}</button>`);
+        if (k === kind) b.classList.add("is-active");
+        b.addEventListener("click", () => {
+          kind = k;
+          personKindTab.set(p.id, k);
+          seg.querySelectorAll("button").forEach((x) => x.classList.toggle("is-active", x.dataset.k === k));
+          paint();
+        });
+        seg.append(b);
+      }
+    }
     wrap.append(sortBar(personSort, (v) => {
       personSort = v;
       try { localStorage.setItem("season.personSort", v); } catch {}

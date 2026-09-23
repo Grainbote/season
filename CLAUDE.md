@@ -110,6 +110,14 @@ Le dépôt public ne contient que la coquille de l'appli.
   texte l'habille), **gros titre**, `Film|Série · année · RÉALISÉ PAR / CRÉÉE PAR` +
   nom, ligne **▶ Bande-annonce** (lien YouTube) + durée, pastilles de thèmes,
   **accroche** (`tagline`, en capitales) et résumé.
+- **Nom du réalisateur/créateur cliquable** (23/09/2026) → sa page (`renderPersonne`,
+  comme le casting). `show.directorPeople` (`[{id, name}]`, rempli par
+  `TMDB.movie`/`TMDB.tv`) porte l'id TMDB de chaque personne ; `show.director`
+  (texte simple, historique) reste affiché non cliquable tant qu'une fiche déjà
+  suivie n'a pas récupéré ce nouveau champ en tâche de fond (ajouté aux déclencheurs
+  de `staleMeta`, comme `keywordIds`/`backdrop` avant lui). `.dir-link` = bouton
+  inline qui reprend l'apparence du `<b>` qu'il remplace, soulignement pointillé
+  léger pour signaler qu'on peut taper dessus.
 - **❤ et ≡ (listes)** : depuis le 21/09/2026 ce sont deux **icônes seules**, posées
   **sur la ligne de la bande-annonce, à droite de la durée** (`.fav-btn.is-icon`
   dans `.hero-line` ; avant : deux boutons à libellé sur une rangée à part). Le
@@ -173,15 +181,25 @@ Le dépôt public ne contient que la coquille de l'appli.
   (il réunit les rôles de toutes les saisons, là où `credits` ne donne que la
   dernière ; le rôle est alors dans `roles[0].character`), côté films
   `/movie/{id}/credits`.
-- **Page d'une personne** (`renderPersonne`) : un tap sur une photo ouvre tout ce
-  dans quoi elle a joué, séries et films mêlés, les plus populaires d'abord
-  (`/person/{id}/combined_credits`, dédoublonné, gardé en session dans
-  `personCache`). **Pas d'émissions de plateau** (sa demande du 23/09/2026) : venir
+- **Page d'une personne** (`renderPersonne`) : un tap sur une photo de casting ou
+  sur le nom du réalisateur/créateur d'une fiche ouvre tout ce dans quoi elle a
+  travaillé (`/person/{id}/combined_credits`, gardé en session dans `personCache`).
+  **Onglets Acteur / Réalisateur / Producteur** (23/09/2026, `PERSON_KINDS`,
+  `TMDB.personCredits` renvoie `{acteur, realisateur, producteur}`) : un onglet
+  n'apparaît que s'il a des crédits (« si jamais le cas échéant », sa demande) —
+  aucune barre du tout s'il n'y en a qu'un (une pure actrice comme Erin Kellyman
+  n'a que « Acteur », pas de segmented affiché). « Réalisateur » = `job ===
+  "Director"` sur le `crew` ; « Producteur » regroupe toutes les variantes TMDB
+  (`/producer/i` sur `job` : Producer, Executive Producer, Co-Producer…) pour
+  éviter des onglets creux. Chaque catégorie est dédoublonnée séparément, triée
+  par popularité. L'onglet retenu se garde par personne le temps de la session
+  (`personKindTab`), le tri (`personSort`) est partagé entre les onglets d'une
+  même personne. **Pas d'émissions de plateau** (sa demande du 23/09/2026) : venir
   sur un plateau compte comme un rôle chez TMDB, et ces émissions très populaires
   monopolisaient le haut de la liste (Peter Dinklage ouvrait sur trois talk-shows
   avant Game of Thrones). **Deux filtres, aucun ne suffit seul** :
   le **genre** (10767 talk, 10763 info, 10764 télé-réalité) et le **rôle**
-  (`/^(self|himself|herself|themselves|lui-même|elle-même)/i`) — beaucoup de jeux
+  (`/^(self|himself|herself|themselves|lui-même|elle-même)\b/i`) — beaucoup de jeux
   de plateau sont rangés en simple « Comédie » (Spicks and Specks, Hughesy We Have
   A Problem…) et passaient à travers le filtre par genre. Résultat vérifié sur
   l'API : Josh Thomas 3 titres (ses deux séries + un spectacle), Peter Dinklage 91.

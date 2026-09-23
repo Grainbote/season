@@ -105,36 +105,52 @@ window.TMDB = (() => {
         }));
     },
 
-    // Tout ce dans quoi une personne a joué (séries + films), les plus populaires
-    // d'abord. Un même titre peut revenir (plusieurs rôles) : on dédoublonne.
+    // Tout ce dans quoi une personne a travaillé (séries + films), les plus
+    // populaires d'abord, séparé en trois catégories (23/09/2026, page d'une
+    // personne à onglets) : Acteur (`cast`), Réalisateur et Producteur (`crew`,
+    // filtrés sur `job`). Un même titre peut revenir (plusieurs rôles/postes) dans
+    // une même catégorie : on dédoublonne à l'intérieur de chacune.
     async personCredits(id) {
       const d = await call(`/person/${id}/combined_credits`);
-      const vus = new Set();
       // Pas d'émissions de plateau (sa demande du 23/09/2026) : chez TMDB, venir
-      // sur un plateau compte comme un rôle, et ces émissions sont si populaires
-      // qu'elles monopolisaient le haut de la liste. Deux filtres, parce qu'aucun
-      // ne suffit seul :
-      //  - le genre, pour talk-show (10767), info (10763) et télé-réalité (10764) ;
-      //  - le rôle « Self » / « Himself »…, car beaucoup de jeux de plateau sont
-      //    rangés en simple « Comédie » (Spicks and Specks, Hughesy We Have A
-      //    Problem…) et passaient à travers le filtre par genre.
+      // sur un plateau compte comme un crédit, et ces émissions sont si populaires
+      // qu'elles monopolisaient le haut de la liste. Appliqué aux trois
+      // catégories (un crédit de production sur un talk-show n'intéresse pas plus
+      // qu'un rôle dedans).
       const plateau = new Set([10767, 10763, 10764]);
+      // Côté acteur seulement : « Self » / « Himself »… échappe au filtre par genre
+      // quand le jeu de plateau est rangé en simple « Comédie » (Spicks and Specks,
+      // Hughesy We Have A Problem…).
       const soiMeme = /^(self|him ?self|her ?self|them ?selves|lui-même|elle-même)\b/i;
-      return (d.cast || [])
-        .filter((x) => (x.media_type === "tv" || x.media_type === "movie") && x.poster_path)
-        .filter((x) => !(x.genre_ids || []).some((g) => plateau.has(g)))
-        .filter((x) => !soiMeme.test((x.character || "").trim()))
-        .map((x) => ({
-          type: x.media_type,
-          tmdbId: x.id,
-          title: x.title || x.name,
-          year: (x.release_date || x.first_air_date || "").slice(0, 4),
-          poster: x.poster_path,
-          popularity: x.popularity || 0,
-          date: x.release_date || x.first_air_date || "",
-        }))
-        .filter((x) => !vus.has(x.type + x.tmdbId) && vus.add(x.type + x.tmdbId))
-        .sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+      const base = (x) => ({
+        type: x.media_type,
+        tmdbId: x.id,
+        title: x.title || x.name,
+        year: (x.release_date || x.first_air_date || "").slice(0, 4),
+        poster: x.poster_path,
+        popularity: x.popularity || 0,
+        date: x.release_date || x.first_air_date || "",
+      });
+      const dedoublonne = (list) => {
+        const vus = new Set();
+        return list.filter((x) => !vus.has(x.type + x.tmdbId) && vus.add(x.type + x.tmdbId));
+      };
+      const parPop = (a, b) => (b.popularity || 0) - (a.popularity || 0);
+      const media = (x) => (x.media_type === "tv" || x.media_type === "movie") && x.poster_path;
+      const acteur = dedoublonne(
+        (d.cast || [])
+          .filter(media)
+          .filter((x) => !(x.genre_ids || []).some((g) => plateau.has(g)))
+          .filter((x) => !soiMeme.test((x.character || "").trim()))
+          .map(base)
+      ).sort(parPop);
+      const crew = (d.crew || []).filter(media).filter((x) => !(x.genre_ids || []).some((g) => plateau.has(g)));
+      const realisateur = dedoublonne(crew.filter((x) => x.job === "Director").map(base)).sort(parPop);
+      // « Producteur » regroupe les variantes TMDB (Producer, Executive Producer,
+      // Co-Producer…) : distinguer chacune aurait fait beaucoup d'onglets creux
+      // pour peu d'intérêt ici.
+      const producteur = dedoublonne(crew.filter((x) => /producer/i.test(x.job || "")).map(base)).sort(parPop);
+      return { acteur, realisateur, producteur };
     },
 
     async searchMulti(query) {
@@ -170,6 +186,12 @@ window.TMDB = (() => {
         tagline: d.tagline || "",
         director: ((d.credits || {}).crew || [])
           .filter((c) => c.job === "Director").map((c) => c.name).slice(0, 2).join(", "),
+        // `directorPeople` (23/09/2026) : mêmes personnes que `director`, avec leur
+        // id TMDB — pour rendre le nom cliquable vers sa page. `director` (texte)
+        // reste affiché tel quel tant qu'une fiche déjà suivie n'a pas encore
+        // récupéré ce nouveau champ (voir `staleMeta`/`fetchMeta`).
+        directorPeople: ((d.credits || {}).crew || [])
+          .filter((c) => c.job === "Director").map((c) => ({ id: c.id, name: c.name })).slice(0, 2),
         trailer: pickTrailer(d.videos),
         genres: (d.genres || []).map((g) => g.name),
         genreIds: (d.genres || []).map((g) => g.id),
@@ -195,6 +217,9 @@ window.TMDB = (() => {
         backdrop: d.backdrop_path || "", // bannière de la fiche
         tagline: d.tagline || "",
         director: (d.created_by || []).map((c) => c.name).slice(0, 2).join(", "),
+        // voir `directorPeople` de `movie()` : mêmes rôles, `created_by` donne déjà
+        // l'id TMDB de chaque créateur.
+        directorPeople: (d.created_by || []).map((c) => ({ id: c.id, name: c.name })).slice(0, 2),
         trailer: pickTrailer(d.videos),
         genres: (d.genres || []).map((g) => g.name),
         genreIds: (d.genres || []).map((g) => g.id),
