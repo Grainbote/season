@@ -779,9 +779,11 @@
       // déjà chargés (« Où regarder », suggestions) pour qu'ils ne se rechargent pas
       const y = window.scrollY, vy = view.scrollTop;
       const open = [...view.querySelectorAll(".season.open .s-name")].map((x) => x.textContent);
+      // (suggestions refaites si les thèmes ont changé : 1ʳᵉ ouverture d'une vieille
+      // fiche dont les mots-clés viennent d'arriver)
       for (const sel of [".wtw", ".related"]) {
         const old = view.querySelector(sel), neu = node.querySelector(sel);
-        if (old && neu) neu.replaceWith(old);
+        if (old && neu && old.dataset.themes === neu.dataset.themes) neu.replaceWith(old);
       }
       node.querySelectorAll(".season").forEach((s) => {
         if (open.includes(s.querySelector(".s-name")?.textContent)) s.querySelector(".season-head")?.click();
@@ -1316,6 +1318,7 @@
     const manual = new Set(show.tagsAdd || []);
     const themeList = precise.filter((t) => !parents.has(t.id))
       .sort((a, b) => manual.has(b.id) - manual.has(a.id)).slice(0, 4);
+    box.dataset.themes = themeList.map((t) => t.id).join(",");
     (async () => {
       try {
         // on masque ce qui est vu ou commencé ; « à voir » reste (sans étiquette)

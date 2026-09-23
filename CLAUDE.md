@@ -232,7 +232,11 @@ Le dépôt public ne contient que la coquille de l'appli.
   Star Trek pour Ted Lasso). **Rangée croisée** : titres du thème puis l'ancien discover
   par genres ponts. Sans thème précis : comportement d'avant (recos puis similar).
   Vérifié : Ted Lasso → Ballers, The League… / Shaolin Soccer, She's the Man ;
-  Le Stratège → Le Mans 66, The Blind Side, Rudy.
+  Le Stratège → Le Mans 66, The Blind Side, Rudy. La boîte `.related` porte
+  `data-themes` : au redessin sur place (`draw(true)`), elle n'est gardée que si ses
+  thèmes n'ont pas changé — sinon, à la 1ʳᵉ ouverture d'une vieille fiche sans
+  `keywordIds` (≈ 2900 sur 2979 au 23/09/2026), les suggestions seraient restées
+  celles calculées avant l'arrivée des mots-clés.
 
 ### Page d'une plateforme (depuis le 21/09/2026)
 
