@@ -42,26 +42,38 @@ Le dépôt public ne contient que la coquille de l'appli.
   paramétré par `listesKind` ; filtre actif retenu par type (`listesFilters`).
 - Segmented **À voir / En cours / Vu** avec compteurs (Films : **À voir / Vu**
   seulement ; un film resté « en cours » compte comme « à voir »).
-- **Tri** (menu déroulant) : *Vu récemment* (défaut — date du dernier épisode
-  coché, ou date du film ; calculée en parcourant tous les épisodes), *Titre A→Z*,
-  **Popularité** (depuis le 20/09/2026). Un choix enregistré qui n'existe plus
-  dans le menu retombe sur le tri par défaut (`sortOr`) — sinon le menu affichait
-  un tri, l'appli en appliquait un autre. **Tri indépendant par onglet depuis le
-  23/09/2026** (`listesSorts.tv` / `listesSorts.movie`, clés `season.sort.tv` /
-  `season.sort.movie`) : avant, Trier par popularité dans les Séries changeait
-  aussi le tri des Films (une seule variable/clé partagée, `season.sort`).
-  L'ancienne clé sert juste de valeur de départ la première fois, pour les deux
-  onglets. Même menu sur Favoris (`season.favSort`) — un seul `sortBar` /
-  `sortersFor` partagé, mais là il n'y a qu'un seul écran Favoris, pas deux
-  onglets à distinguer.
+- **Tri** (menu déroulant, **différent pour Séries et pour Films** —
+  `listesSortsFor(listesKind)`) :
+  - **Séries** (`LISTES_SORTS_TV`) : *Vu récemment* (défaut — date du dernier
+    épisode coché ; calculée en parcourant tous les épisodes), *Titre A→Z*,
+    **Popularité** (depuis le 20/09/2026), *Date d'ajout* (voir plus bas).
+  - **Films** (`LISTES_SORTS_MOVIE`) : *Titre A→Z* (défaut), **Popularité**,
+    *Date d'ajout*. **Pas de « Vu récemment »** (retiré le 23/09/2026, sa
+    demande) : un film n'a pas d'épisodes à cocher au fil du temps comme une
+    série « en cours », la date de visionnage y pesait moins comme tri
+    principal. Un ancien choix « vu » enregistré avant ce retrait retombe sur
+    *Titre A→Z* (`sortOr(…, "titre", LISTES_SORTS_MOVIE)`), pas sur « vu » qui
+    n'existe plus dans ce menu.
+  - Un choix enregistré qui n'existe plus dans le menu retombe sur le tri par
+    défaut (`sortOr`) — sinon le menu affichait un tri, l'appli en appliquait
+    un autre.
+  - **Tri indépendant par onglet depuis le 23/09/2026** (`listesSorts.tv` /
+    `listesSorts.movie`, clés `season.sort.tv` / `season.sort.movie`) : avant,
+    Trier par popularité dans les Séries changeait aussi le tri des Films (une
+    seule variable/clé partagée, `season.sort`). L'ancienne clé sert juste de
+    valeur de départ la première fois, pour les deux onglets.
+  - Même menu de base sur Favoris (`SORTS` = vu/titre/populaire,
+    `season.favSort`) — un seul `sortBar` / `sortersFor` partagé, mais là il
+    n'y a qu'un seul écran Favoris, pas deux onglets à distinguer ; Favoris n'a
+    ni « Date d'ajout » ni la restriction de Films sur « Vu récemment ».
 - **Date d'ajout** (23/09/2026, `createdAt`, Séries et Films **seulement**) :
   classe le plus récemment ajouté à Season en premier, dans le segment affiché
   (À voir / En cours / Vu). Un premier essai portant ce même calcul (« Ajout
   récent », sur le menu commun à tout, y compris Favoris) avait été **retiré le
   21/09/2026** : elle le confondait avec « Vu récemment ». Reproduit avec un nom
-  plus clair et un menu à part, `LISTES_SORTS = { ...SORTS, ajout: "Date
-  d'ajout" }`, qui ne s'applique qu'aux onglets Séries/Films — le menu de
-  Favoris (`SORTS` seul) ne l'a pas.
+  plus clair et un menu à part par onglet (`LISTES_SORTS_TV` / `LISTES_SORTS_MOVIE`,
+  toutes deux `{ ...SORTS, ajout: "Date d'ajout" }` sauf Films qui exclut `vu`)
+  — le menu de Favoris (`SORTS` seul) ne l'a pas.
 - **Popularité** = `show.popularity` (TMDB), enregistrée depuis le 20/09/2026 par
   `TMDB.tv/movie` (donc mise à jour à chaque rafraîchissement de fiche). Les fiches
   plus anciennes ne l'ont pas : elles se rangent **en dernier**, et une barre sous le
