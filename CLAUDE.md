@@ -116,8 +116,8 @@ Le dépôt public ne contient que la coquille de l'appli.
   (texte simple, historique) reste affiché non cliquable tant qu'une fiche déjà
   suivie n'a pas récupéré ce nouveau champ en tâche de fond (ajouté aux déclencheurs
   de `staleMeta`, comme `keywordIds`/`backdrop` avant lui). `.dir-link` = bouton
-  inline qui reprend l'apparence du `<b>` qu'il remplace, soulignement pointillé
-  léger pour signaler qu'on peut taper dessus.
+  inline qui reprend l'apparence du `<b>` qu'il remplace, sans soulignement
+  (23/09/2026 : retiré, cliquable suffit).
 - **❤ et ≡ (listes)** : depuis le 21/09/2026 ce sont deux **icônes seules**, posées
   **sur la ligne de la bande-annonce, à droite de la durée** (`.fav-btn.is-icon`
   dans `.hero-line` ; avant : deux boutons à libellé sur une rangée à part). Le

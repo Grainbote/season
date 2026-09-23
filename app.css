@@ -631,8 +631,7 @@ img { max-width: 100%; }
 .detail-hero .sub .hero-by { text-transform: uppercase; letter-spacing: 0.6px; }
 .detail-hero .sub b { color: var(--text); font-size: 14px; }
 /* nom du réalisateur/créateur cliquable (23/09/2026) : bouton inline qui reprend
-   l'apparence du texte en gras qu'il remplace, souligné en pointillé léger pour
-   signaler qu'on peut taper dessus */
+   l'apparence du texte en gras qu'il remplace, sans soulignement (juste cliquable) */
 .dir-link {
   background: none;
   border: none;
@@ -641,9 +640,7 @@ img { max-width: 100%; }
   font: inherit;
   font-weight: inherit;
   color: inherit;
-  text-decoration: underline;
-  text-decoration-style: dotted;
-  text-underline-offset: 3px;
+  text-decoration: none;
   cursor: pointer;
 }
 .hero-line { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
