@@ -797,9 +797,10 @@
     let changed = false;
     // (sans mots-clés = enregistrée avant les thèmes : on les récupère tout de suite)
     // (sans bannière = enregistrée avant la nouvelle en-tête : on la complète)
-    // (sans directorPeople = enregistrée avant que le nom soit cliquable, 23/09/2026)
+    // (sans directorPeople = enregistrée avant que le nom soit cliquable, 23/09/2026 ;
+    // sans le champ `photo` dedans = enregistrée avant sa photo sur la page personne)
     if (staleMeta(show) || !Array.isArray(show.keywordIds) || show.backdrop === undefined
-      || !Array.isArray(show.directorPeople)) {
+      || !Array.isArray(show.directorPeople) || show.directorPeople.some((p) => !("photo" in p))) {
       try { await fetchMeta(show); await DB.putShow(show); changed = true; } catch {}
     }
     if (type === "tv" && staleMeta({ metaAt: show.epAt })) {

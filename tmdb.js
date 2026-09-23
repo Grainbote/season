@@ -191,7 +191,9 @@ window.TMDB = (() => {
         // reste affiché tel quel tant qu'une fiche déjà suivie n'a pas encore
         // récupéré ce nouveau champ (voir `staleMeta`/`fetchMeta`).
         directorPeople: ((d.credits || {}).crew || [])
-          .filter((c) => c.job === "Director").map((c) => ({ id: c.id, name: c.name })).slice(0, 2),
+          .filter((c) => c.job === "Director")
+          .map((c) => ({ id: c.id, name: c.name, photo: c.profile_path || null }))
+          .slice(0, 2),
         trailer: pickTrailer(d.videos),
         genres: (d.genres || []).map((g) => g.name),
         genreIds: (d.genres || []).map((g) => g.id),
@@ -219,7 +221,9 @@ window.TMDB = (() => {
         director: (d.created_by || []).map((c) => c.name).slice(0, 2).join(", "),
         // voir `directorPeople` de `movie()` : mêmes rôles, `created_by` donne déjà
         // l'id TMDB de chaque créateur.
-        directorPeople: (d.created_by || []).map((c) => ({ id: c.id, name: c.name })).slice(0, 2),
+        directorPeople: (d.created_by || [])
+          .map((c) => ({ id: c.id, name: c.name, photo: c.profile_path || null }))
+          .slice(0, 2),
         trailer: pickTrailer(d.videos),
         genres: (d.genres || []).map((g) => g.name),
         genreIds: (d.genres || []).map((g) => g.id),

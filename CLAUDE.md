@@ -111,13 +111,15 @@ Le dépôt public ne contient que la coquille de l'appli.
   nom, ligne **▶ Bande-annonce** (lien YouTube) + durée, pastilles de thèmes,
   **accroche** (`tagline`, en capitales) et résumé.
 - **Nom du réalisateur/créateur cliquable** (23/09/2026) → sa page (`renderPersonne`,
-  comme le casting). `show.directorPeople` (`[{id, name}]`, rempli par
-  `TMDB.movie`/`TMDB.tv`) porte l'id TMDB de chaque personne ; `show.director`
-  (texte simple, historique) reste affiché non cliquable tant qu'une fiche déjà
-  suivie n'a pas récupéré ce nouveau champ en tâche de fond (ajouté aux déclencheurs
-  de `staleMeta`, comme `keywordIds`/`backdrop` avant lui). `.dir-link` = bouton
-  inline qui reprend l'apparence du `<b>` qu'il remplace, sans soulignement
-  (23/09/2026 : retiré, cliquable suffit).
+  comme le casting). `show.directorPeople` (`[{id, name, photo}]`, rempli par
+  `TMDB.movie`/`TMDB.tv`) porte l'id TMDB et la photo (`profile_path`) de chaque
+  personne — `photo` alimente la photo en tête de la page personne, comme pour un
+  acteur ; `show.director` (texte simple, historique) reste affiché non cliquable
+  tant qu'une fiche déjà suivie n'a pas récupéré ce nouveau champ en tâche de fond
+  (ajouté aux déclencheurs de `staleMeta`, comme `keywordIds`/`backdrop` avant lui —
+  y compris pour un `directorPeople` déjà présent mais sans `photo`, ajouté après
+  coup le 23/09/2026). `.dir-link` = bouton inline qui reprend l'apparence du `<b>`
+  qu'il remplace, sans soulignement (cliquable suffit).
 - **❤ et ≡ (listes)** : depuis le 21/09/2026 ce sont deux **icônes seules**, posées
   **sur la ligne de la bande-annonce, à droite de la durée** (`.fav-btn.is-icon`
   dans `.hero-line` ; avant : deux boutons à libellé sur une rangée à part). Le
