@@ -1138,8 +1138,8 @@
       render(wrap);
       return;
     }
-    wrap.append(el(`<div class="reco-note" style="margin:-4px 0 12px">${vis.length} titre${
-      vis.length > 1 ? "s" : ""}</div>`));
+    // compteur « N titres » retiré le 23/09/2026 (sa demande) ; le tri remonte
+    // juste sous le nom, à sa place
     const grid = el('<div class="poster-grid no-caption"></div>');
     // tri (23/09/2026) : tout est déjà chargé, on retrie sur place sans rien redemander
     const paint = () => {

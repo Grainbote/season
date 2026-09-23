@@ -168,6 +168,8 @@ Le dépôt public ne contient que la coquille de l'appli.
   anciens*. Tout est déjà chargé : on retrie la grille sur place, sans requête.
   Un titre sans date (projet annoncé) passe **en dernier dans les deux sens**
   chronologiques ; à date égale, le plus populaire d'abord.
+  Le compteur « N titres » a été **retiré** le même jour (sa demande) : le tri est
+  monté à sa place, juste sous le nom.
 - **Suggestions façon Letterboxd** (depuis le 20/09/2026) : sections « Séries
   similaires » / « Films similaires » (avant : « Dans le même genre · … »), titre de
   section avec **« Tout voir »** à droite (`.section-head`) et rangée d'**affiches
