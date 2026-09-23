@@ -219,6 +219,20 @@ Le dépôt public ne contient que la coquille de l'appli.
   section avec **« Tout voir »** à droite (`.section-head`) et rangée d'**affiches
   seules** qui défile (`.reco-row.no-caption` ; le titre reste en `aria-label`).
   « Tout voir » ouvre `renderSimilaires` : la même liste en grille.
+- **Suggestions guidées par les thèmes** (23/09/2026, sa demande « affiner les genres
+  pour affiner les recommandations ») : `relatedSection` passe à `TMDB.related` les
+  mots-clés des **thèmes précis** de la fiche (`themes: [[ids…], …]`, un tableau par
+  thème ; ses ✎ comptent, ajouts manuels d'abord, un sous-thème remplace son parent,
+  4 max ; ids des thèmes dans `cacheKey`). Dans `related` : `themed(t, genres)` = une
+  requête `/discover` par thème (mots-clés + genres, 2 pages ; complétée par mots-clés
+  seuls si < 8), titres cumulant plusieurs thèmes d'abord puis **tour à tour, thème le
+  plus rare en premier** (`total_results`) — sinon « Famille & amitié » (`friendship`,
+  partout) noyait « Sport ». Ordre final **même type** : recos TMDB du thème → 6 autres
+  titres du thème → reste des recos TMDB → reste du thème → `similar` (le plus faible :
+  Star Trek pour Ted Lasso). **Rangée croisée** : titres du thème puis l'ancien discover
+  par genres ponts. Sans thème précis : comportement d'avant (recos puis similar).
+  Vérifié : Ted Lasso → Ballers, The League… / Shaolin Soccer, She's the Man ;
+  Le Stratège → Le Mans 66, The Blind Side, Rudy.
 
 ### Page d'une plateforme (depuis le 21/09/2026)
 
@@ -265,6 +279,16 @@ Le dépôt public ne contient que la coquille de l'appli.
   Surnaturel & horreur, Dystopie, Voyage dans le temps… et les grands genres (`broad`, en dernier).
   Ids de mots-clés vérifiés via `/search/keyword`. Écartés car trop larges : love 9673,
   romantic 324429, slow burn 277551, second chance 34004 (ramenaient The Brutalist…).
+- **Mots-clés élargis le 23/09/2026** (tous les thèmes précis ; un seul mot-clé par
+  thème ratait trop de titres — Ted Lasso a `football (soccer)`, `professional sports`,
+  `premier league`… mais pas `sports` 6075, donc pas de pastille Sport). Sport couvre
+  maintenant foot, football US, basket, baseball, boxe, tennis, hockey, catch, JO,
+  golf, patinage, gym, surf, cheerleading, underdog sports… Écartés car ambigus :
+  doctor, nurse, coach (aussi l'autocar), village, band, espionnage industriel,
+  mental hospital, survival show, **super power** (mettait Stranger Things en
+  Super-héros). Contrôle fait sur ~40 titres connus (ancien vs nouveau `autoThemes`).
+  Aucune migration : `keywordIds` est déjà stocké sur chaque fiche, les pastilles se
+  recalculent à l'affichage.
 - **Détection** (`autoThemes`) : genres du type OU mots-clés de la fiche. `TMDB.tv/movie`
   demandent `append_to_response=keywords` → `show.genreIds`, `show.keywordIds`. Fiche
   suivie sans `keywordIds` = périmée → complétée en tâche de fond à l'ouverture. Repli

@@ -1309,19 +1309,26 @@
     box.append(spinner());
     const provs = myProviders();
     const provById = new Map(provs.map((p) => [p.id, p]));
+    // thèmes précis de la fiche (ses ✎ compris, ajouts manuels d'abord) → titres du même
+    // thème en tête ; un sous-thème remplace son parent (plus précis), 4 thèmes max
+    const precise = THEMES.themesOf(show).filter((t) => !t.broad && t.keywords.length);
+    const parents = new Set(precise.map((t) => t.parent).filter(Boolean));
+    const manual = new Set(show.tagsAdd || []);
+    const themeList = precise.filter((t) => !parents.has(t.id))
+      .sort((a, b) => manual.has(b.id) - manual.has(a.id)).slice(0, 4);
     (async () => {
       try {
         // on masque ce qui est vu ou commencé ; « à voir » reste (sans étiquette)
         const mine = new Map((await DB.allShows()).map((s) => [s.key, s.status]));
         const hidden = (k) => k === show.key || isHidden(k) ||
           mine.get(k) === "vu" || mine.get(k) === "en_cours";
-        const cacheKey = show.key + "|" + provs.map((p) => p.id).join(",");
+        const cacheKey = show.key + "|" + provs.map((p) => p.id).join(",") + "|" + themeList.map((t) => t.id).join(",");
         let data = relatedCache.get(cacheKey);
         if (!data) {
           // on dit aussi à TMDB de sauter ce qu'elle a masqué : il propose autre chose
           const skip = new Set([...[...mine.keys()].filter(hidden), ...hiddenKeys]);
           data = await TMDB.related(show.type, show.tmdbId || show.key.split(":")[1],
-            { prov: provs.map((p) => p.id), skip });
+            { prov: provs.map((p) => p.id), skip, themes: themeList.map((t) => t.keywords) });
           relatedCache.set(cacheKey, data);
         }
         const keep = (list) => list.filter((x) => !hidden(`${x.type}:${x.tmdbId}`)).slice(0, 15);

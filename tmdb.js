@@ -295,7 +295,9 @@ window.TMDB = (() => {
     // série, séries pour un film) aux genres correspondants via /discover.
     // `prov` (ids de plateformes) : ne garder que ce qui y est disponible.
     // `skip` (clés « type:id ») : titres à ne pas proposer (déjà vus…).
-    async related(type, id, { prov = [], skip = new Set() } = {}) {
+    // `themes` (tableau de listes de mots-clés, une par thème précis de la fiche) :
+    // les titres qui partagent un de ces thèmes passent en tête des deux rangées.
+    async related(type, id, { prov = [], skip = new Set(), themes = [] } = {}) {
       const d = await call(`/${type}/${id}`, { append_to_response: "recommendations,similar" });
       const map = (x, t) => ({
         type: t,
@@ -306,10 +308,13 @@ window.TMDB = (() => {
         poster: x.poster_path,
       });
       const ok = (t) => (x) => x.poster_path && !skip.has(`${t}:${x.id}`) && x.id !== +id;
-      const seen = new Set();
-      let same = [...((d.recommendations || {}).results || []), ...((d.similar || {}).results || [])]
-        .filter((x) => ok(type)(x) && !seen.has(x.id) && seen.add(x.id))
-        .map((x) => map(x, type));
+      const merge = (...lists) => {
+        const seen = new Set();
+        return lists.flat().filter((x) => !seen.has(x.tmdbId) && seen.add(x.tmdbId));
+      };
+      const tmdbList = (r) => ((r || {}).results || []).filter(ok(type)).map((x) => map(x, type));
+      const recos = tmdbList(d.recommendations);
+      const similar = tmdbList(d.similar); // le plus faible (Ted Lasso → Star Trek…) : en dernier
 
       const srcIds = new Set((d.genres || []).map((g) => g.id));
       // « Drame » est partout : on ne s'en sert que s'il n'y a rien de plus parlant
@@ -317,17 +322,19 @@ window.TMDB = (() => {
       // pas de dessin animé / jeunesse si le titre de départ n'en est pas
       const withoutFor = (ids) => [16, 10751, 10762].filter((g) => !srcIds.has(g) && !ids.includes(g));
 
-      // titres ayant au moins un de ces genres, classés par nombre de genres en commun
-      // (le plus proche d'abord), la popularité départageant
-      const discover = async (t, ids) => {
-        if (!ids.length) return [];
+      // titres ayant au moins un de ces genres (et un de ces mots-clés s'il y en a),
+      // classés par nombre de genres en commun (le plus proche d'abord), la popularité
+      // départageant
+      const discover = async (t, ids, { keywords = [], pages = 5 } = {}) => {
+        if (!ids.length && !keywords.length) return [];
         const extra = prov.length
           ? { with_watch_providers: prov.join("|"), watch_region: REGION,
               with_watch_monetization_types: "flatrate|free|ads" }
           : {};
-        const pages = await Promise.all([1, 2, 3, 4, 5].map((page) =>
+        const results = await Promise.all(Array.from({ length: pages }, (_, i) => i + 1).map((page) =>
           call(`/discover/${t}`, {
-            with_genres: ids.join("|"),
+            ...(ids.length ? { with_genres: ids.join("|") } : {}),
+            ...(keywords.length ? { with_keywords: keywords.join("|") } : {}),
             without_genres: withoutFor(ids).join("|"),
             sort_by: "popularity.desc",
             "vote_count.gte": prov.length ? "50" : "200",
@@ -338,19 +345,52 @@ window.TMDB = (() => {
         ));
         const want = new Set(ids);
         const got = new Set();
-        const scored = pages.flatMap((p) => p.results || [])
+        const scored = results.flatMap((p) => p.results || [])
           .filter((x) => ok(t)(x) && !got.has(x.id) && got.add(x.id))
           .map((x, rank) => ({ x, rank, common: (x.genre_ids || []).filter((g) => want.has(g)).length }))
           .sort((a, b) => b.common - a.common || a.rank - b.rank);
         // le plus de genres en commun possible (jusqu'à 3), en gardant une rangée fournie
         let min = Math.min(3, ids.length);
         while (min > 1 && scored.filter((o) => o.common >= min).length < 8) min--;
-        return scored.filter((o) => o.common >= min).map(({ x }) => map(x, t));
+        const out = scored.filter((o) => o.common >= min).map(({ x }) => map(x, t));
+        out.total = (results[0] || {}).total_results || 0; // → rareté d'un thème
+        return out;
+      };
+
+      // titres partageant un thème : une requête par thème (mots-clés + genres, ou
+      // mots-clés seuls si trop peu) ; ceux qui cumulent plusieurs thèmes d'abord,
+      // puis un de chaque thème à tour de rôle, le plus rare en premier (sinon
+      // « amitié », très répandu, noierait « sport »)
+      const themed = async (t, ids) => {
+        if (!themes.length) return [];
+        const lists = (await Promise.all(themes.map(async (kw) => {
+          const both = await discover(t, ids, { keywords: kw, pages: 2 });
+          const list = both.length >= 8 ? both : merge(both, await discover(t, [], { keywords: kw, pages: 2 }));
+          return { list, total: both.total || Infinity };
+        }))).sort((a, b) => a.total - b.total).map((o) => o.list);
+        const count = new Map();
+        lists.flat().forEach((x) => count.set(x.tmdbId, (count.get(x.tmdbId) || 0) + 1));
+        const turns = [];
+        for (let i = 0; i < Math.max(...lists.map((l) => l.length)); i++) {
+          lists.forEach((l) => l[i] && turns.push(l[i]));
+        }
+        return merge(turns.filter((x) => count.get(x.tmdbId) > 1), turns);
       };
 
       const other = type === "tv" ? "movie" : "tv";
       const crossIds = noDrama([...new Set([...srcIds].flatMap((g) => GENRE_BRIDGE[type][g] || []))]);
-      let cross = await discover(other, crossIds);
+      const [sameThemed, crossThemed, crossGenres] = await Promise.all([
+        themed(type, noDrama([...srcIds])),
+        themed(other, crossIds),
+        discover(other, crossIds),
+      ]);
+      // même type : recos TMDB qui partagent un thème → 6 autres titres du thème →
+      // reste des recos TMDB → reste du thème → « similar ». Sans thème : recos puis
+      // similar (comme avant).
+      const inTheme = new Set(sameThemed.map((x) => x.tmdbId));
+      let same = merge(recos.filter((x) => inTheme.has(x.tmdbId)), sameThemed.slice(0, 6),
+        recos, sameThemed, similar);
+      let cross = merge(crossThemed, crossGenres);
 
       if (prov.length) {
         // indique sur quelle(s) plateforme(s) de la liste chaque titre se trouve
